@@ -1,17 +1,19 @@
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from sqlalchemy import select
 
 from app.api.v1.deps import CurrentUserId, DbSession, TenantId
 from app.models import Alert
+from app.rate_limit import limiter
 from app.schemas.alert import AlertCreate, AlertOut, AlertUpdate
 
 router = APIRouter(prefix="/alerts", tags=["alerts"])
 
 
 @router.get("", response_model=list[AlertOut])
-async def list_alerts(db: DbSession, tenant_id: TenantId):
+@limiter.limit("60/minute")
+async def list_alerts(request: Request, db: DbSession, tenant_id: TenantId):
     result = await db.execute(
         select(Alert).where(Alert.tenant_id == tenant_id).order_by(Alert.created_at.desc())
     )
@@ -20,8 +22,9 @@ async def list_alerts(db: DbSession, tenant_id: TenantId):
 
 
 @router.post("", response_model=AlertOut, status_code=201)
+@limiter.limit("20/minute")
 async def create_alert(
-    body: AlertCreate, db: DbSession, tenant_id: TenantId, user_id: CurrentUserId
+    request: Request, body: AlertCreate, db: DbSession, tenant_id: TenantId, user_id: CurrentUserId
 ):
     alert = Alert(
         tenant_id=tenant_id,
@@ -42,8 +45,9 @@ async def create_alert(
 
 
 @router.put("/{alert_id}", response_model=AlertOut)
+@limiter.limit("20/minute")
 async def update_alert(
-    alert_id: UUID, body: AlertUpdate, db: DbSession, tenant_id: TenantId
+    request: Request, alert_id: UUID, body: AlertUpdate, db: DbSession, tenant_id: TenantId
 ):
     alert = await db.get(Alert, alert_id)
     if not alert or alert.tenant_id != tenant_id:
@@ -56,7 +60,8 @@ async def update_alert(
 
 
 @router.delete("/{alert_id}", status_code=204)
-async def delete_alert(alert_id: UUID, db: DbSession, tenant_id: TenantId):
+@limiter.limit("20/minute")
+async def delete_alert(request: Request, alert_id: UUID, db: DbSession, tenant_id: TenantId):
     alert = await db.get(Alert, alert_id)
     if not alert or alert.tenant_id != tenant_id:
         raise HTTPException(status_code=404, detail="Alert not found")

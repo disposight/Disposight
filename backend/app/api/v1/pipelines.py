@@ -3,12 +3,13 @@
 import asyncio
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import func, select
 
 from app.api.v1.deps import CurrentUserId, DbSession
 from app.models import RawSignal, Signal
+from app.rate_limit import limiter
 
 router = APIRouter(prefix="/pipelines", tags=["pipelines"])
 
@@ -27,7 +28,9 @@ class PipelineRunResponse(BaseModel):
 
 
 @router.get("/new-signals", response_model=NewSignalsResponse)
+@limiter.limit("60/minute")
 async def check_new_signals(
+    request: Request,
     user_id: CurrentUserId,
     db: DbSession,
     since: str = Query(
@@ -57,7 +60,8 @@ async def check_new_signals(
 
 
 @router.post("/run", response_model=PipelineRunResponse)
-async def trigger_pipeline_run(user_id: CurrentUserId, db: DbSession):
+@limiter.limit("5/minute")
+async def trigger_pipeline_run(request: Request, user_id: CurrentUserId, db: DbSession):
     """Manually trigger all 4 collectors + processing pipeline.
     Runs collectors concurrently, then processes raw signals.
     """

@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, Request
 from app.api.v1.deps import DbSession, TenantId
 from app.config import settings
 from app.models import Subscription, Tenant
+from app.rate_limit import limiter
 
 router = APIRouter(prefix="/billing", tags=["billing"])
 
@@ -20,7 +21,8 @@ def _price_to_plan(price_id: str) -> str:
 
 
 @router.post("/checkout")
-async def create_checkout(db: DbSession, tenant_id: TenantId, price_id: str = ""):
+@limiter.limit("5/minute")
+async def create_checkout(request: Request, db: DbSession, tenant_id: TenantId, price_id: str = ""):
     if not settings.stripe_secret_key:
         raise HTTPException(status_code=503, detail="Billing not configured")
 
@@ -48,7 +50,8 @@ async def create_checkout(db: DbSession, tenant_id: TenantId, price_id: str = ""
 
 
 @router.get("/portal")
-async def customer_portal(db: DbSession, tenant_id: TenantId):
+@limiter.limit("5/minute")
+async def customer_portal(request: Request, db: DbSession, tenant_id: TenantId):
     if not settings.stripe_secret_key:
         raise HTTPException(status_code=503, detail="Billing not configured")
 
@@ -64,6 +67,7 @@ async def customer_portal(db: DbSession, tenant_id: TenantId):
 
 
 @router.post("/webhook")
+@limiter.limit("60/minute")
 async def stripe_webhook(request: Request, db: DbSession):
     if not settings.stripe_webhook_secret:
         raise HTTPException(status_code=503, detail="Webhooks not configured")

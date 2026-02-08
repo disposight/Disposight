@@ -1,17 +1,20 @@
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from sqlalchemy import func, select
 
 from app.api.v1.deps import DbSession
 from app.models import Company, Signal
+from app.rate_limit import limiter
 from app.schemas.signal import SignalListResponse, SignalOut
 
 router = APIRouter(prefix="/signals", tags=["signals"])
 
 
 @router.get("", response_model=SignalListResponse)
+@limiter.limit("60/minute")
 async def list_signals(
+    request: Request,
     db: DbSession,
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
@@ -72,7 +75,8 @@ async def list_signals(
 
 
 @router.get("/{signal_id}", response_model=SignalOut)
-async def get_signal(signal_id: UUID, db: DbSession):
+@limiter.limit("60/minute")
+async def get_signal(request: Request, signal_id: UUID, db: DbSession):
     result = await db.execute(
         select(Signal, Company.name.label("company_name"))
         .join(Company, Signal.company_id == Company.id)

@@ -2,12 +2,13 @@ import re
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import select
 
 from app.api.v1.deps import CurrentUserId, DbSession
 from app.models import Tenant, User
+from app.rate_limit import limiter
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -25,7 +26,8 @@ class AuthCallbackResponse(BaseModel):
 
 
 @router.post("/callback", response_model=AuthCallbackResponse)
-async def auth_callback(body: AuthCallbackRequest, user_id: CurrentUserId, db: DbSession):
+@limiter.limit("10/minute")
+async def auth_callback(request: Request, body: AuthCallbackRequest, user_id: CurrentUserId, db: DbSession):
     """Post-auth hook: ensure user + tenant records exist after Supabase sign-up."""
     existing = await db.get(User, user_id)
     if existing:
@@ -68,7 +70,8 @@ async def auth_callback(body: AuthCallbackRequest, user_id: CurrentUserId, db: D
 
 
 @router.get("/me")
-async def get_me(user_id: CurrentUserId, db: DbSession):
+@limiter.limit("10/minute")
+async def get_me(request: Request, user_id: CurrentUserId, db: DbSession):
     user = await db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")

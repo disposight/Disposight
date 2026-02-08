@@ -1,10 +1,11 @@
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from sqlalchemy import func, select
 
 from app.api.v1.deps import DbSession, TenantId
 from app.models import Alert, Company, Signal, SignalSource, Watchlist
+from app.rate_limit import limiter
 from app.schemas.dashboard import DashboardResponse, DashboardStats, PipelineHealthItem
 from app.schemas.signal import SignalOut
 
@@ -12,7 +13,8 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 
 @router.get("/stats", response_model=DashboardResponse)
-async def get_stats(db: DbSession, tenant_id: TenantId):
+@limiter.limit("60/minute")
+async def get_stats(request: Request, db: DbSession, tenant_id: TenantId):
     now = datetime.now(timezone.utc)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
@@ -73,7 +75,8 @@ async def get_stats(db: DbSession, tenant_id: TenantId):
 
 
 @router.get("/pipeline-health", response_model=list[PipelineHealthItem])
-async def pipeline_health(db: DbSession):
+@limiter.limit("60/minute")
+async def pipeline_health(request: Request, db: DbSession):
     result = await db.execute(select(SignalSource).order_by(SignalSource.name))
     sources = result.scalars().all()
     return [

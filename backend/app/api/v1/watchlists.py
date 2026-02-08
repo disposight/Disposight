@@ -1,17 +1,19 @@
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from sqlalchemy import select
 
 from app.api.v1.deps import CurrentUserId, DbSession, TenantId
 from app.models import Company, Watchlist
+from app.rate_limit import limiter
 from app.schemas.watchlist import WatchlistAdd, WatchlistOut
 
 router = APIRouter(prefix="/watchlists", tags=["watchlists"])
 
 
 @router.get("", response_model=list[WatchlistOut])
-async def list_watchlist(db: DbSession, tenant_id: TenantId):
+@limiter.limit("60/minute")
+async def list_watchlist(request: Request, db: DbSession, tenant_id: TenantId):
     result = await db.execute(
         select(Watchlist, Company.name, Company.composite_risk_score)
         .join(Company, Watchlist.company_id == Company.id)
@@ -33,8 +35,9 @@ async def list_watchlist(db: DbSession, tenant_id: TenantId):
 
 
 @router.post("", response_model=WatchlistOut, status_code=201)
+@limiter.limit("20/minute")
 async def add_to_watchlist(
-    body: WatchlistAdd, db: DbSession, tenant_id: TenantId, user_id: CurrentUserId
+    request: Request, body: WatchlistAdd, db: DbSession, tenant_id: TenantId, user_id: CurrentUserId
 ):
     company = await db.get(Company, body.company_id)
     if not company:
@@ -68,7 +71,8 @@ async def add_to_watchlist(
 
 
 @router.delete("/{watchlist_id}", status_code=204)
-async def remove_from_watchlist(watchlist_id: UUID, db: DbSession, tenant_id: TenantId):
+@limiter.limit("20/minute")
+async def remove_from_watchlist(request: Request, watchlist_id: UUID, db: DbSession, tenant_id: TenantId):
     item = await db.get(Watchlist, watchlist_id)
     if not item or item.tenant_id != tenant_id:
         raise HTTPException(status_code=404, detail="Watchlist item not found")
