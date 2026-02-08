@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api, type CompanyListResponse } from "@/lib/api";
+import { PlanGate } from "@/components/dashboard/plan-gate";
 
 function scoreColor(score: number): string {
   if (score >= 80) return "var(--critical)";
@@ -30,6 +31,7 @@ export default function CompaniesPage() {
   }, [search, page]);
 
   return (
+    <PlanGate>
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold" style={{ color: "var(--text-primary)" }}>
@@ -119,5 +121,6 @@ export default function CompaniesPage() {
         )}
       </div>
     </div>
+    </PlanGate>
   );
 }

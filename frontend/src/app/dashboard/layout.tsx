@@ -1,4 +1,5 @@
 import { Sidebar } from "@/components/dashboard/sidebar";
+import { PlanProvider } from "@/contexts/plan-context";
 
 export default function DashboardLayout({
   children,
@@ -8,7 +9,9 @@ export default function DashboardLayout({
   return (
     <div className="min-h-screen" style={{ backgroundColor: "var(--bg-base)" }}>
       <Sidebar />
-      <main className="ml-60 p-6">{children}</main>
+      <main className="ml-60 p-6">
+        <PlanProvider>{children}</PlanProvider>
+      </main>
     </div>
   );
 }

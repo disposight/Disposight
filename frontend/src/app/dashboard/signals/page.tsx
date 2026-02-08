@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { api, type Signal, type SignalListResponse } from "@/lib/api";
 import { SignalCard } from "@/components/dashboard/signal-card";
+import { PlanGate } from "@/components/dashboard/plan-gate";
 
 const SIGNAL_TYPES = [
   "All", "layoff", "bankruptcy_ch7", "bankruptcy_ch11", "merger",
@@ -28,6 +29,7 @@ export default function SignalsPage() {
   }, [filter, page]);
 
   return (
+    <PlanGate>
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold" style={{ color: "var(--text-primary)" }}>
         Signals
@@ -104,5 +106,6 @@ export default function SignalsPage() {
         </div>
       )}
     </div>
+    </PlanGate>
   );
 }

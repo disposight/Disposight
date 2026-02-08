@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api, type WatchlistItem } from "@/lib/api";
+import { PlanGate } from "@/components/dashboard/plan-gate";
 
 function scoreColor(score: number): string {
   if (score >= 80) return "var(--critical)";
@@ -29,6 +30,7 @@ export default function WatchlistPage() {
   };
 
   return (
+    <PlanGate>
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold" style={{ color: "var(--text-primary)" }}>
         Watchlist
@@ -89,5 +91,6 @@ export default function WatchlistPage() {
         </div>
       )}
     </div>
+    </PlanGate>
   );
 }

@@ -18,6 +18,7 @@ const navItems = [
   ]},
   { label: "Account", items: [
     { href: "/dashboard/settings", label: "Settings", icon: "⚙" },
+    { href: "/dashboard/help", label: "Help", icon: "?" },
   ]},
 ];
 

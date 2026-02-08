@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, type Alert } from "@/lib/api";
+import { PlanGate } from "@/components/dashboard/plan-gate";
 
 export default function AlertsPage() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
@@ -36,6 +37,7 @@ export default function AlertsPage() {
   };
 
   return (
+    <PlanGate>
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold" style={{ color: "var(--text-primary)" }}>
@@ -127,5 +129,6 @@ export default function AlertsPage() {
         </div>
       )}
     </div>
+    </PlanGate>
   );
 }

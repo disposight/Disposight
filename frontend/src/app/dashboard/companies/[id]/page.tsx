@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { api, type Company, type Signal } from "@/lib/api";
 import { SignalCard } from "@/components/dashboard/signal-card";
+import { PlanGate } from "@/components/dashboard/plan-gate";
 
 function scoreColor(score: number): string {
   if (score >= 80) return "var(--critical)";
@@ -40,6 +41,7 @@ export default function CompanyDetailPage() {
   }
 
   return (
+    <PlanGate>
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between">
@@ -125,5 +127,6 @@ export default function CompanyDetailPage() {
         )}
       </div>
     </div>
+    </PlanGate>
   );
 }

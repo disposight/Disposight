@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { api, type Signal, type SignalListResponse } from "@/lib/api";
+import { PlanGate } from "@/components/dashboard/plan-gate";
 
 const SignalMap = dynamic(
   () => import("@/components/dashboard/signal-map"),
@@ -48,6 +49,7 @@ export default function MapPage() {
   );
 
   return (
+    <PlanGate>
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1
@@ -142,5 +144,6 @@ export default function MapPage() {
         </span>
       </div>
     </div>
+    </PlanGate>
   );
 }
