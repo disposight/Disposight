@@ -17,6 +17,7 @@ class Tenant(Base):
     plan: Mapped[str] = mapped_column(String(50), server_default="free")
     stripe_customer_id: Mapped[str | None] = mapped_column(String(255))
     stripe_subscription_id: Mapped[str | None] = mapped_column(String(255))
+    trial_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     max_seats: Mapped[int] = mapped_column(Integer, server_default="1")
     max_watchlist_companies: Mapped[int] = mapped_column(Integer, server_default="50")
     settings: Mapped[dict] = mapped_column(JSONB, server_default="{}")

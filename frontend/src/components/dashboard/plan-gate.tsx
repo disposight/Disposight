@@ -5,7 +5,7 @@ import { usePlan } from "@/contexts/plan-context";
 import type { ReactNode } from "react";
 
 export function PlanGate({ children }: { children: ReactNode }) {
-  const { loading, isPaid } = usePlan();
+  const { loading, isPaid, isTrial, daysLeft, trialEndsAt } = usePlan();
 
   if (loading) {
     return (
@@ -104,5 +104,29 @@ export function PlanGate({ children }: { children: ReactNode }) {
     );
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      {isTrial && trialEndsAt && (
+        <div
+          className="mb-4 flex items-center justify-between rounded-md px-4 py-2.5 text-sm"
+          style={{
+            backgroundColor: "var(--accent-muted)",
+            border: "1px solid var(--accent)",
+          }}
+        >
+          <span style={{ color: "var(--text-primary)" }}>
+            Trial ends {trialEndsAt.toLocaleDateString()} ({daysLeft} day{daysLeft !== 1 ? "s" : ""} left)
+          </span>
+          <Link
+            href="/dashboard/settings"
+            className="px-3 py-1 rounded text-xs font-medium"
+            style={{ backgroundColor: "var(--accent)", color: "#fff" }}
+          >
+            Upgrade Now
+          </Link>
+        </div>
+      )}
+      {children}
+    </>
+  );
 }

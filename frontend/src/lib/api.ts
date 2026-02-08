@@ -205,6 +205,7 @@ export interface UserProfile {
   tenant_id: string;
   tenant_name: string | null;
   plan: string | null;
+  trial_ends_at: string | null;
 }
 
 export interface AuthCallbackResponse {

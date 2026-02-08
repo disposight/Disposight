@@ -40,6 +40,7 @@ class Settings(BaseSettings):
 
     # Frontend
     frontend_url: str = "http://localhost:3000"
+    allowed_origins: str = ""
 
     # SEC EDGAR
     sec_user_agent: str = "DispoSight contact@disposight.com"

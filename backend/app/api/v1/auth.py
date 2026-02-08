@@ -1,5 +1,6 @@
 import re
 import uuid
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -40,7 +41,12 @@ async def auth_callback(body: AuthCallbackRequest, user_id: CurrentUserId, db: D
     # Ensure unique slug
     slug = f"{slug}-{uuid.uuid4().hex[:6]}"
 
-    tenant = Tenant(name=tenant_name, slug=slug)
+    tenant = Tenant(
+        name=tenant_name,
+        slug=slug,
+        plan="trialing",
+        trial_ends_at=datetime.now(timezone.utc) + timedelta(days=3),
+    )
     db.add(tenant)
     await db.flush()
 
@@ -67,6 +73,14 @@ async def get_me(user_id: CurrentUserId, db: DbSession):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     tenant = await db.get(Tenant, user.tenant_id)
+
+    # Auto-expire trial
+    if tenant and tenant.plan == "trialing" and tenant.trial_ends_at:
+        if datetime.now(timezone.utc) > tenant.trial_ends_at:
+            tenant.plan = "free"
+            tenant.trial_ends_at = None
+            await db.flush()
+
     return {
         "id": str(user.id),
         "email": user.email,
@@ -75,4 +89,5 @@ async def get_me(user_id: CurrentUserId, db: DbSession):
         "tenant_id": str(user.tenant_id),
         "tenant_name": tenant.name if tenant else None,
         "plan": tenant.plan if tenant else None,
+        "trial_ends_at": tenant.trial_ends_at.isoformat() if tenant and tenant.trial_ends_at else None,
     }

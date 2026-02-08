@@ -7,6 +7,9 @@ interface PlanContextValue {
   plan: string | null;
   loading: boolean;
   isPaid: boolean;
+  isTrial: boolean;
+  trialEndsAt: Date | null;
+  daysLeft: number | null;
   user: UserProfile | null;
 }
 
@@ -14,6 +17,9 @@ const PlanContext = createContext<PlanContextValue>({
   plan: null,
   loading: true,
   isPaid: false,
+  isTrial: false,
+  trialEndsAt: null,
+  daysLeft: null,
   user: null,
 });
 
@@ -31,9 +37,17 @@ export function PlanProvider({ children }: { children: ReactNode }) {
 
   const plan = user?.plan ?? null;
   const isPaid = plan !== null && plan !== "free";
+  const isTrial = plan === "trialing";
+  const trialEndsAt = user?.trial_ends_at ? new Date(user.trial_ends_at) : null;
+
+  let daysLeft: number | null = null;
+  if (trialEndsAt) {
+    const ms = trialEndsAt.getTime() - Date.now();
+    daysLeft = Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)));
+  }
 
   return (
-    <PlanContext.Provider value={{ plan, loading, isPaid, user }}>
+    <PlanContext.Provider value={{ plan, loading, isPaid, isTrial, trialEndsAt, daysLeft, user }}>
       {children}
     </PlanContext.Provider>
   );

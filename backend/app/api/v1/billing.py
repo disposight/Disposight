@@ -10,6 +10,15 @@ router = APIRouter(prefix="/billing", tags=["billing"])
 stripe.api_key = settings.stripe_secret_key
 
 
+def _price_to_plan(price_id: str) -> str:
+    """Map a Stripe price ID to a plan name."""
+    mapping = {
+        settings.stripe_starter_price_id: "starter",
+        settings.stripe_pro_price_id: "pro",
+    }
+    return mapping.get(price_id, "starter")
+
+
 @router.post("/checkout")
 async def create_checkout(db: DbSession, tenant_id: TenantId, price_id: str = ""):
     if not settings.stripe_secret_key:
@@ -81,14 +90,25 @@ async def stripe_webhook(request: Request, db: DbSession):
             )
             tenant = result.scalar_one_or_none()
             if tenant:
+                # Resolve plan from the Stripe subscription's price
+                plan_name = "starter"
+                try:
+                    stripe_sub = stripe.Subscription.retrieve(subscription_id)
+                    if stripe_sub["items"]["data"]:
+                        price_id = stripe_sub["items"]["data"][0]["price"]["id"]
+                        plan_name = _price_to_plan(price_id)
+                except Exception:
+                    pass
+
                 tenant.stripe_subscription_id = subscription_id
-                tenant.plan = "starter"
+                tenant.plan = plan_name
+                tenant.trial_ends_at = None  # Clear trial on paid conversion
 
                 sub = Subscription(
                     tenant_id=tenant.id,
                     stripe_subscription_id=subscription_id,
                     stripe_customer_id=customer_id,
-                    plan_name="starter",
+                    plan_name=plan_name,
                     status="active",
                 )
                 db.add(sub)

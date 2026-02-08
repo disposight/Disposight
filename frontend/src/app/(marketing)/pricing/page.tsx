@@ -58,7 +58,7 @@ export default function PricingPage() {
             Simple, transparent pricing
           </h1>
           <p className="text-base" style={{ color: "var(--text-secondary)" }}>
-            14-day free trial. No credit card required.
+            3-day free trial. No credit card required.
           </p>
         </div>
 

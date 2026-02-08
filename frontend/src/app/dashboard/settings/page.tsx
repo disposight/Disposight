@@ -81,7 +81,9 @@ export default function SettingsPage() {
           <div>
             <label className="text-xs" style={{ color: "var(--text-muted)" }}>Plan</label>
             <p className="text-sm font-mono" style={{ color: "var(--accent-text)" }}>
-              {user?.plan?.toUpperCase() || "FREE"}
+              {user?.plan === "trialing" && user?.trial_ends_at
+                ? `TRIAL (expires ${new Date(user.trial_ends_at).toLocaleDateString()})`
+                : user?.plan?.toUpperCase() || "FREE"}
             </p>
           </div>
         </div>
