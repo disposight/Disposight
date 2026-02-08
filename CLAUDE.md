@@ -56,7 +56,7 @@ cd backend && uv run pytest
 
 ## Current Build Status (as of 2026-02-08)
 
-**All implementation tasks COMPLETE. App is fully functional with live data.**
+**Fully deployed. App is live with real data.**
 
 ### What's Built
 - **Backend**: FastAPI with 21 routes, 10 SQLAlchemy ORM models, all loading
@@ -68,8 +68,20 @@ cd backend && uv run pytest
 - **Help Page**: `/dashboard/help` with 15-item FAQ accordion + 10-section How-to Guide, tabbed interface
 - **Email**: Resend integration with real-time alerts + daily/weekly digests (`backend/app/email/`)
 - **Billing**: Stripe checkout, portal, webhooks (`backend/app/api/v1/billing.py`)
+- **Rate Limiting**: SlowAPI with Redis backend, per-user (JWT) or per-IP keying (`backend/app/rate_limit.py`)
 - **Tests**: 7/7 passing (`backend/tests/test_device_filter.py`)
 - **Docker**: Dockerfile + docker-compose (Redis)
+
+### Rate Limit Tiers
+| Tier | Limit | Endpoints |
+|------|-------|-----------|
+| Auth | 10/min | `/auth/callback`, `/auth/me` |
+| Billing | 5/min | `/billing/checkout`, `/billing/portal` |
+| Webhook | 60/min | `/billing/webhook` |
+| Read | 60/min | `/signals`, `/companies`, `/dashboard`, `/watchlists`, `/alerts`, `/pipelines/new-signals` |
+| Write | 20/min | POST/PUT/DELETE on watchlists, alerts |
+| Pipelines | 5/min | `/pipelines/run` |
+| Health | No limit | `/health` |
 
 ### Live Data (as of 2026-02-08)
 - **891 raw signals** ingested from real APIs
@@ -78,40 +90,33 @@ cd backend && uv run pytest
 - **583 signals discarded** (below 100-device threshold)
 - Real companies: Amazon, Meta, Macy's, Wells Fargo, Thermo Fisher, Phillips 66, Constellation Brands, Nestle, etc.
 
-### What's Done (completed this session)
-- Supabase MCP connected and authenticated
-- Database migration applied + seed data loaded
-- Frontend `.env.local` has real Supabase URL/anon key
-- Git repo has all code committed and pushed to `disposight/Disposight`
-- All 4 pipelines tested against live APIs (WARN Act: 953 found, GDELT: 3, SEC EDGAR: 50, CourtListener: 14)
-- NLP pipeline switched from Anthropic to OpenAI (gpt-4o-mini)
-- 255 raw signals processed through OpenAI NLP pipeline
-- Help page with FAQ + How-to Guide
-- Free/paid plan gating (PlanGate component)
-- Vercel MCP server added (needs auth on next session restart)
+### Deployment
 
-### What's NOT Done Yet
-- **Vercel deployment** — MCP added, needs OAuth auth on session restart, then deploy frontend
-- **Backend deployment** — Fly.io not configured (user only has Vercel account currently)
-- **Redis (Upstash)** — Not configured (needed for ARQ background workers in production)
-- **API rate limiting** — CORS is set but no rate limiting middleware
-- **Stripe keys** — `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` not set in `.env`
-- **Resend key** — `RESEND_API_KEY` not set in `.env`
+#### Production URLs
+- **Frontend**: https://disposight.com (Vercel)
+- **Backend**: https://backend-production-97dd.up.railway.app (Railway)
+- **Health check**: https://backend-production-97dd.up.railway.app/health
+
+#### Infrastructure
+- **Frontend hosting**: Vercel (project: `prj_TYoEuecn9uB5TCOoWFk8FGwOsN2Q`, team: `team_ZQlmyA4h4rtWutfE0I8kuJok`)
+- **Backend hosting**: Railway (project: `disposight-backend`)
+- **Redis**: Railway (internal URL, same project as backend)
+- **Database**: Supabase PostgreSQL
+- **Auth**: Supabase Auth (ES256 JWKS + HS256 fallback)
+
+#### Environment Variables (all set in production)
+- Railway backend: DATABASE_URL, REDIS_URL, SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_JWT_SECRET, OPENAI_API_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_STARTER_PRICE_ID, STRIPE_PRO_PRICE_ID, RESEND_API_KEY, COURTLISTENER_API_KEY, FRONTEND_URL, ALLOWED_ORIGINS
+- Vercel frontend: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, NEXT_PUBLIC_API_URL
+
+### What's Left
 - **Auth flow test** — Manual test needed (register → login → dashboard)
-
-### Next Steps (in priority order)
-1. Authenticate Vercel MCP (restart session, OAuth)
-2. Deploy frontend to Vercel (set env vars, deploy)
-3. Set up Fly.io account + deploy backend
-4. Set up Upstash Redis for production workers
-5. Set Stripe + Resend API keys
-6. Test full auth flow end-to-end
-7. API rate limiting
+- **Stripe webhook endpoint** — Register `https://backend-production-97dd.up.railway.app/api/v1/billing/webhook` in Stripe dashboard
+- **Custom domain DNS** — Verify `disposight.com` DNS records point to Vercel
 
 ### GitHub
 - Repo: `disposight/Disposight`
 - Branch: `main`
-- Latest commit: `5cf948a` (Switch NLP pipeline from Anthropic to OpenAI)
+- Latest commit: `06dcd73` (Add API rate limiting with SlowAPI)
 - Authenticated as: `ecosio1`
 
 ### Supabase
@@ -122,19 +127,18 @@ cd backend && uv run pytest
 ### MCP Servers
 - **Supabase**: Connected and authenticated
 - **GitHub**: Connected and authenticated
-- **Vercel**: Added, needs OAuth on next session restart
+- **Vercel**: Connected and authenticated
+- **Railway**: Connected and authenticated
 
 ### Dev Server
 - Frontend: `http://localhost:3000` (`cd frontend && npm run dev`)
 - Backend: `http://localhost:8000` (`cd backend && uv run uvicorn app.main:app --reload`)
 
-### Key Files for Plan Gating
+### Key Files
 - `frontend/src/contexts/plan-context.tsx` — PlanProvider (fetches user plan once)
 - `frontend/src/components/dashboard/plan-gate.tsx` — Upgrade wall for free users
 - `frontend/src/app/dashboard/layout.tsx` — Wraps children in PlanProvider
+- `backend/app/rate_limit.py` — SlowAPI limiter instance + key function
+- `backend/app/processing/llm_client.py` — OpenAI-powered, model map: "haiku" → gpt-4o-mini, "sonnet" → gpt-4o
 - Gated pages: Overview, Signals, Companies, Company detail, Map, Watchlist, Alerts
 - Ungated pages: Settings, Help
-
-### LLM Client
-- `backend/app/processing/llm_client.py` — OpenAI-powered, model map: "haiku" → gpt-4o-mini, "sonnet" → gpt-4o
-- Only 2 files call LLM: `entity_extractor.py` and `signal_classifier.py` (both use "haiku" alias)
