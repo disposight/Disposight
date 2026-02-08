@@ -1,7 +1,6 @@
 import json
 
 import structlog
-from anthropic import AsyncAnthropic
 from openai import AsyncOpenAI
 from tenacity import retry, stop_after_attempt, wait_exponential
 
@@ -9,13 +8,18 @@ from app.config import settings
 
 logger = structlog.get_logger()
 
+# Map internal model aliases to OpenAI model IDs
+MODEL_MAP = {
+    "haiku": "gpt-4o-mini",
+    "sonnet": "gpt-4o",
+}
+
 
 class LLMClient:
-    """Adapter for Claude and OpenAI APIs with automatic fallback."""
+    """OpenAI-powered LLM client for NLP processing."""
 
     def __init__(self):
-        self._anthropic = AsyncAnthropic(api_key=settings.anthropic_api_key) if settings.anthropic_api_key else None
-        self._openai = AsyncOpenAI(api_key=settings.openai_api_key) if settings.openai_api_key else None
+        self._client = AsyncOpenAI(api_key=settings.openai_api_key) if settings.openai_api_key else None
 
     @retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=1, max=8))
     async def complete(
@@ -24,34 +28,13 @@ class LLMClient:
         model: str = "haiku",
         max_tokens: int = 1024,
     ) -> str:
-        """Get a completion from Claude (primary) or OpenAI (fallback)."""
-        if self._anthropic:
-            try:
-                model_id = {
-                    "haiku": "claude-haiku-4-5-20251001",
-                    "sonnet": "claude-sonnet-4-5-20250929",
-                }.get(model, model)
+        """Get a completion from OpenAI."""
+        if not self._client:
+            raise RuntimeError("No LLM API configured. Set OPENAI_API_KEY.")
 
-                response = await self._anthropic.messages.create(
-                    model=model_id,
-                    max_tokens=max_tokens,
-                    messages=[{"role": "user", "content": prompt}],
-                )
-                return response.content[0].text
-            except Exception as e:
-                logger.warning("llm.claude_failed", error=str(e), model=model)
-                if self._openai:
-                    return await self._openai_fallback(prompt, max_tokens)
-                raise
-
-        if self._openai:
-            return await self._openai_fallback(prompt, max_tokens)
-
-        raise RuntimeError("No LLM API configured. Set ANTHROPIC_API_KEY or OPENAI_API_KEY.")
-
-    async def _openai_fallback(self, prompt: str, max_tokens: int) -> str:
-        response = await self._openai.chat.completions.create(
-            model="gpt-4o-mini",
+        model_id = MODEL_MAP.get(model, model)
+        response = await self._client.chat.completions.create(
+            model=model_id,
             max_tokens=max_tokens,
             messages=[{"role": "user", "content": prompt}],
         )
