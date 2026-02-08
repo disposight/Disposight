@@ -78,6 +78,14 @@ export const api = {
     }),
   getPortal: () => apiFetch<{ portal_url: string }>("/billing/portal"),
 
+  // Pipelines
+  checkNewSignals: (since: string) =>
+    apiFetch<{ new_count: number; latest_at: string | null }>(
+      `/pipelines/new-signals?since=${encodeURIComponent(since)}`
+    ),
+  triggerPipelineRun: () =>
+    apiFetch<Record<string, unknown>>("/pipelines/run", { method: "POST" }),
+
   // Auth
   getMe: () => apiFetch<UserProfile>("/auth/me"),
   authCallback: (data: { email: string; full_name?: string }) =>

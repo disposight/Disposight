@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { useNewSignals } from "@/lib/use-new-signals";
 
 const navItems = [
   { label: "Intelligence", items: [
     { href: "/dashboard", label: "Overview", icon: "◉" },
-    { href: "/dashboard/signals", label: "Signals", icon: "⚡" },
+    { href: "/dashboard/signals", label: "Signals", icon: "⚡", badge: true },
     { href: "/dashboard/companies", label: "Companies", icon: "▣" },
     { href: "/dashboard/map", label: "Map", icon: "◎" },
   ]},
@@ -23,6 +24,7 @@ const navItems = [
 export function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const { newCount, dismiss } = useNewSignals();
 
   return (
     <aside
@@ -54,10 +56,14 @@ export function Sidebar() {
             <div className="space-y-0.5">
               {section.items.map((item) => {
                 const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
+                const showBadge = item.badge && newCount > 0;
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
+                    onClick={() => {
+                      if (item.badge) dismiss();
+                    }}
                     className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
                       collapsed ? "justify-center" : ""
                     }`}
@@ -67,8 +73,31 @@ export function Sidebar() {
                     }}
                     title={collapsed ? item.label : undefined}
                   >
-                    <span className="text-base">{item.icon}</span>
-                    {!collapsed && <span>{item.label}</span>}
+                    <span className="text-base relative">
+                      {item.icon}
+                      {showBadge && collapsed && (
+                        <span
+                          className="absolute -top-1 -right-1 w-2 h-2 rounded-full"
+                          style={{ backgroundColor: "var(--accent)" }}
+                        />
+                      )}
+                    </span>
+                    {!collapsed && (
+                      <span className="flex-1 flex items-center justify-between">
+                        <span>{item.label}</span>
+                        {showBadge && (
+                          <span
+                            className="ml-2 px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none"
+                            style={{
+                              backgroundColor: "var(--accent)",
+                              color: "#fff",
+                            }}
+                          >
+                            {newCount > 99 ? "99+" : newCount}
+                          </span>
+                        )}
+                      </span>
+                    )}
                   </Link>
                 );
               })}
