@@ -1,0 +1,54 @@
+import structlog
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.config import settings
+
+structlog.configure(
+    processors=[
+        structlog.contextvars.merge_contextvars,
+        structlog.processors.add_log_level,
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.dev.ConsoleRenderer() if settings.debug else structlog.processors.JSONRenderer(),
+    ],
+    wrapper_class=structlog.make_filtering_bound_logger(0),
+    context_class=dict,
+    logger_factory=structlog.PrintLoggerFactory(),
+    cache_logger_on_first_use=True,
+)
+
+
+def create_app() -> FastAPI:
+    app = FastAPI(
+        title=settings.app_name,
+        version="0.1.0",
+        docs_url="/api/docs" if settings.debug else None,
+        redoc_url=None,
+    )
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[settings.frontend_url],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    from app.api.v1 import auth, companies, signals, dashboard, watchlists, alerts, billing
+
+    app.include_router(auth.router, prefix=settings.api_prefix)
+    app.include_router(companies.router, prefix=settings.api_prefix)
+    app.include_router(signals.router, prefix=settings.api_prefix)
+    app.include_router(dashboard.router, prefix=settings.api_prefix)
+    app.include_router(watchlists.router, prefix=settings.api_prefix)
+    app.include_router(alerts.router, prefix=settings.api_prefix)
+    app.include_router(billing.router, prefix=settings.api_prefix)
+
+    @app.get("/health")
+    async def health():
+        return {"status": "ok"}
+
+    return app
+
+
+app = create_app()
