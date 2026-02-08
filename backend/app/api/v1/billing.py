@@ -42,11 +42,11 @@ async def create_checkout(request: Request, db: DbSession, tenant_id: TenantId, 
         customer=tenant.stripe_customer_id,
         mode="subscription",
         line_items=[{"price": price_id or settings.stripe_starter_price_id, "quantity": 1}],
-        success_url=f"{settings.frontend_url}/dashboard/settings?billing=success",
-        cancel_url=f"{settings.frontend_url}/dashboard/settings?billing=cancel",
+        ui_mode="embedded",
+        return_url=f"{settings.frontend_url}/dashboard/settings?billing=success",
     )
 
-    return {"checkout_url": session.url}
+    return {"client_secret": session.client_secret}
 
 
 @router.get("/portal")

@@ -72,7 +72,7 @@ export const api = {
 
   // Billing
   createCheckout: (priceId?: string) =>
-    apiFetch<{ checkout_url: string }>("/billing/checkout", {
+    apiFetch<{ client_secret: string }>("/billing/checkout", {
       method: "POST",
       body: JSON.stringify({ price_id: priceId }),
     }),
