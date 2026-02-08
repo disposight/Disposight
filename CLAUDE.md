@@ -106,17 +106,22 @@ cd backend && uv run pytest
 
 #### Environment Variables (all set in production)
 - Railway backend: DATABASE_URL, REDIS_URL, SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_JWT_SECRET, OPENAI_API_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_STARTER_PRICE_ID, STRIPE_PRO_PRICE_ID, RESEND_API_KEY, COURTLISTENER_API_KEY, FRONTEND_URL, ALLOWED_ORIGINS
-- Vercel frontend: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, NEXT_PUBLIC_API_URL
+- Vercel frontend: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, NEXT_PUBLIC_API_URL, NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+
+### Completed
+- **Custom domain DNS** — `disposight.com` A record → `76.76.21.21` (Vercel), `www` CNAME → `cname.vercel-dns.com`
+- **Embedded Stripe checkout** — Switched from redirect to in-page embedded checkout on Settings page
+- **Stripe packages** — `@stripe/react-stripe-js` + `@stripe/stripe-js` added to frontend
 
 ### What's Left
 - **Auth flow test** — Manual test needed (register → login → dashboard)
 - **Stripe webhook endpoint** — Register `https://backend-production-97dd.up.railway.app/api/v1/billing/webhook` in Stripe dashboard
-- **Custom domain DNS** — Verify `disposight.com` DNS records point to Vercel
+- **NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY** — Set in Vercel env vars (needed for embedded checkout)
 
 ### GitHub
 - Repo: `disposight/Disposight`
 - Branch: `main`
-- Latest commit: `06dcd73` (Add API rate limiting with SlowAPI)
+- Latest commit: `d5febdc` (Switch Stripe checkout from redirect to embedded mode)
 - Authenticated as: `ecosio1`
 
 ### Supabase
