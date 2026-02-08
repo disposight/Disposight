@@ -1,8 +1,9 @@
-import csv
 import io
-from datetime import date, datetime
+import re
+from datetime import datetime
 
 import httpx
+import openpyxl
 import structlog
 from tenacity import retry, stop_after_attempt, wait_exponential
 
@@ -10,19 +11,10 @@ from app.ingestion.base import BaseCollector
 
 logger = structlog.get_logger()
 
-# Priority states with data.gov WARN data endpoints
-# These URLs point to the WARN Act datasets on data.gov
-STATE_DATASETS = {
-    "CA": "https://data.edd.ca.gov/api/views/ja6x-tigg/rows.csv?accessType=DOWNLOAD",
-}
-
-# State-specific WARN notice pages (HTML scraping fallback)
-STATE_PAGES = {
-    "NY": "https://dol.ny.gov/warn-notices",
-    "TX": "https://www.twc.texas.gov/businesses/worker-adjustment-and-retraining-notification-warn-notices",
-    "FL": "http://floridajobs.org/office-directory/division-of-workforce-services/workforce-programs/reemployment-and-emergency-assistance-coordination-team-react/warn-notices",
-    "IL": "https://www.illinoisworknet.com/LayoffRecovery/Pages/WARNNotices.aspx",
-}
+# California EDD publishes WARN data as XLSX (updated Tue/Thu)
+CA_WARN_URL = "https://edd.ca.gov/siteassets/files/jobs_and_training/warn/warn_report1.xlsx"
+# Sheet name for detailed data (has trailing space in the actual file)
+CA_SHEET_NAME = "Detailed WARN Report "
 
 
 class WarnActCollector(BaseCollector):
@@ -30,71 +22,121 @@ class WarnActCollector(BaseCollector):
     source_type = "warn_act"
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, max=16))
-    async def _fetch_csv(self, url: str) -> str:
-        async with httpx.AsyncClient(timeout=60) as client:
+    async def _fetch_xlsx(self, url: str) -> bytes:
+        async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
             response = await client.get(url)
             response.raise_for_status()
-            return response.text
+            return response.content
 
     async def collect(self) -> list[dict]:
         signals = []
 
-        # California — richest WARN data via data.gov
         try:
-            csv_text = await self._fetch_csv(STATE_DATASETS["CA"])
-            signals.extend(self._parse_california_csv(csv_text))
+            xlsx_bytes = await self._fetch_xlsx(CA_WARN_URL)
+            signals.extend(self._parse_california_xlsx(xlsx_bytes))
             logger.info("warn_act.california_fetched", count=len(signals))
         except Exception as e:
             logger.warning("warn_act.california_failed", error=str(e))
 
         return signals
 
-    def _parse_california_csv(self, csv_text: str) -> list[dict]:
+    def _parse_california_xlsx(self, xlsx_bytes: bytes) -> list[dict]:
         results = []
-        reader = csv.DictReader(io.StringIO(csv_text))
+        wb = openpyxl.load_workbook(io.BytesIO(xlsx_bytes), read_only=True)
 
-        for row in reader:
+        # Find the detailed report sheet
+        ws = None
+        for name in wb.sheetnames:
+            if "detailed" in name.lower() and "warn" in name.lower():
+                ws = wb[name]
+                break
+        if ws is None:
+            logger.warning("warn_act.sheet_not_found", sheets=wb.sheetnames)
+            wb.close()
+            return results
+
+        rows = list(ws.iter_rows(values_only=True))
+        if len(rows) < 3:
+            wb.close()
+            return results
+
+        # Row 0 is title, row 1 is headers
+        # Headers: County/Parish, Notice Date, Processed Date, Effective Date, Company, Layoff/Closure, No. Of Employees, Address, Related Industry
+        for row in rows[2:]:
             try:
-                company_name = row.get("Company") or row.get("company_name", "")
-                if not company_name:
+                if len(row) < 7:
                     continue
 
-                employees_str = (
-                    row.get("No. Of Employees")
-                    or row.get("employees_affected")
-                    or row.get("NumEmployees", "0")
-                )
-                employees = int(str(employees_str).replace(",", "").strip() or "0")
+                county = row[0]
+                notice_date = row[1]
+                effective_date = row[3]
+                company_name = row[4]
+                layoff_type = row[5]
+                employees = row[6]
+                address = row[7] if len(row) > 7 else ""
+
+                if not company_name:
+                    continue
+                company_name = str(company_name).strip()
+
+                # Parse employees
+                emp_count = 0
+                if employees is not None:
+                    try:
+                        emp_count = int(str(employees).replace(",", "").strip())
+                    except (ValueError, TypeError):
+                        emp_count = 0
 
                 # Parse date
-                date_str = (
-                    row.get("Effective Date")
-                    or row.get("effective_date")
-                    or row.get("EffectiveDate", "")
-                )
                 event_date = None
-                if date_str:
+                date_val = effective_date or notice_date
+                if isinstance(date_val, datetime):
+                    event_date = date_val.date()
+                elif isinstance(date_val, str) and date_val.strip():
                     for fmt in ("%m/%d/%Y", "%Y-%m-%d", "%m/%d/%y"):
                         try:
-                            event_date = datetime.strptime(date_str.strip(), fmt).date()
+                            event_date = datetime.strptime(date_val.strip(), fmt).date()
                             break
                         except ValueError:
                             continue
 
-                city = row.get("City") or row.get("city", "")
-                state = "CA"
+                # Extract city from address (format: "30825 Wiegman Road  Hayward CA 94544")
+                # Use double-space as delimiter — EDD formats as "Street  City CA Zip"
+                city = ""
+                if address and isinstance(address, str):
+                    # Split on double-space which separates street from city
+                    addr_parts = re.split(r"\s{2,}", address.strip())
+                    if len(addr_parts) >= 2:
+                        # Last segment before zip is "City CA 94544"
+                        city_state = addr_parts[-1].strip()
+                        # Remove "CA" and zip
+                        city = re.sub(r"\s+CA\s+\d{5}(-\d{4})?$", "", city_state).strip()
+                    if not city:
+                        # Fallback: take 1-2 words before "CA"
+                        parts = address.strip().split()
+                        for i, part in enumerate(parts):
+                            if part == "CA" and i > 0:
+                                city = parts[i - 1]
+                                if i > 1 and parts[i - 2][0].isupper() and not parts[i - 2][0].isdigit():
+                                    city = parts[i - 2] + " " + city
+                                break
+
+                event_type = "layoff"
+                if layoff_type and "closure" in str(layoff_type).lower():
+                    event_type = "facility_shutdown"
 
                 results.append({
-                    "company_name": company_name.strip(),
-                    "event_type": "layoff",
+                    "company_name": company_name,
+                    "event_type": event_type,
                     "event_date": event_date,
-                    "employees_affected": employees,
-                    "locations": [{"city": city.strip(), "state": state}] if city else [],
-                    "source_url": STATE_DATASETS["CA"],
-                    "raw_text": f"WARN notice: {company_name}, {employees} employees, {city}, CA",
+                    "employees_affected": emp_count,
+                    "locations": [{"city": city, "state": "CA", "county": str(county or "").replace(" County", "")}] if county else [],
+                    "source_url": CA_WARN_URL,
+                    "raw_text": f"WARN notice: {company_name}, {emp_count} employees, {county or 'CA'}, {event_type}",
                 })
             except Exception as e:
-                logger.warning("warn_act.parse_error", error=str(e), row=str(row)[:200])
+                logger.warning("warn_act.parse_error", error=str(e))
                 continue
 
+        wb.close()
         return results
