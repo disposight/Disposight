@@ -1,4 +1,5 @@
 import hashlib
+import math
 import time
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
@@ -8,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import RawSignal, SignalSource
+from app.processing.device_filter import DEVICE_MULTIPLIERS, DEVICE_THRESHOLD
 
 logger = structlog.get_logger()
 
@@ -52,8 +54,10 @@ class BaseCollector(ABC):
 
                 # Critical filter: 100+ devices potential?
                 employees = item.get("employees_affected")
-                if employees is not None and employees < 67:
-                    # ~67 employees * 1.5 = ~100 devices
+                event_type = item.get("event_type", "unknown")
+                multiplier = DEVICE_MULTIPLIERS.get(event_type, 1.0)
+                min_employees = math.ceil(DEVICE_THRESHOLD / multiplier) if multiplier > 0 else DEVICE_THRESHOLD
+                if employees is not None and employees < min_employees:
                     filtered_count += 1
                     signal = RawSignal(
                         source_type=self.source_type,

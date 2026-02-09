@@ -18,6 +18,32 @@ logger = structlog.get_logger()
 
 BATCH_SIZE = 20
 
+# Normalize LLM-returned signal types to canonical values
+SIGNAL_TYPE_ALIASES: dict[str, str] = {
+    "facility_closure": "facility_shutdown",
+    "facility_closing": "facility_shutdown",
+    "shutdown": "facility_shutdown",
+    "plant_closure": "plant_closing",
+    "news": "restructuring",
+    "unknown": "restructuring",
+    "office_closing": "office_closure",
+    "bankruptcy": "bankruptcy_ch11",
+    "chapter_7": "bankruptcy_ch7",
+    "chapter_11": "bankruptcy_ch11",
+    "ch7": "bankruptcy_ch7",
+    "ch11": "bankruptcy_ch11",
+    "asset_sale": "liquidation",
+    "closure": "facility_shutdown",
+    "layoffs": "layoff",
+    "downsizing": "layoff",
+    "workforce_reduction": "layoff",
+}
+
+
+def _normalize_signal_type(raw_type: str) -> str:
+    """Map variant signal types to canonical values."""
+    return SIGNAL_TYPE_ALIASES.get(raw_type, raw_type)
+
 
 async def process_pending_signals(db: AsyncSession) -> dict:
     """Process a batch of raw signals through the NLP pipeline."""
@@ -58,20 +84,27 @@ async def process_pending_signals(db: AsyncSession) -> dict:
                 raw.source_type,
             )
 
-            # Step 4: Device estimation
+            # Step 4: Normalize signal type
+            raw_signal_type = classification.get("signal_type", raw.event_type)
+            signal_type = _normalize_signal_type(raw_signal_type)
+
+            # Step 5: Device estimation
             employees = entities.get("employees_affected") or raw.employees_affected
             if not employees and company.employee_count:
                 employees = company.employee_count
-            device_estimate = estimate_devices(
-                classification.get("signal_type", raw.event_type),
-                employees,
-            )
 
-            # Step 5: Create processed signal
+            # Cap employees for SEC EDGAR restructuring signals —
+            # LLM often extracts total company headcount, not affected employees
+            if raw.source_type == "sec_edgar" and signal_type == "restructuring" and employees and employees > 5000:
+                employees = min(employees, 5000)
+
+            device_estimate = estimate_devices(signal_type, employees)
+
+            # Step 6: Create processed signal
             signal = Signal(
                 raw_signal_id=raw.id,
                 company_id=company.id,
-                signal_type=classification.get("signal_type", raw.event_type),
+                signal_type=signal_type,
                 signal_category=classification.get("signal_category", "news"),
                 title=f"{company_name}: {raw.event_type}",
                 summary=summary,
@@ -88,7 +121,7 @@ async def process_pending_signals(db: AsyncSession) -> dict:
             db.add(signal)
             await db.flush()
 
-            # Step 6: Correlation
+            # Step 7: Correlation
             await correlate_signal(db, signal)
 
             # Mark raw signal as processed
@@ -115,7 +148,7 @@ async def process_pending_signals(db: AsyncSession) -> dict:
                 error=str(e),
             )
 
-    # Step 7: Update company risk scores
+    # Step 8: Update company risk scores
     for company_id in companies_to_update:
         await update_company_risk_score(db, company_id)
 

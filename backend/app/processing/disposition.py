@@ -14,6 +14,10 @@ DISPOSITION_MAP: dict[str, str] = {
     "merger": "3-6 months",
     "acquisition": "3-6 months",
     "relocation": "3-6 months",
+    # Aliases for non-canonical types in existing data
+    "facility_closure": "2-4 weeks",
+    "facility_closing": "2-4 weeks",
+    "shutdown": "2-4 weeks",
 }
 
 # Priority ordering (lower index = more urgent)

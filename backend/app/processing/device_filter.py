@@ -21,6 +21,10 @@ DEVICE_MULTIPLIERS = {
     "ceasing_operations": 3.0,
     "restructuring": 1.2,       # Partial surplus from reorg
     "relocation": 0.5,          # May keep equipment
+    # Aliases for non-canonical types in existing data
+    "facility_closure": 1.8,
+    "facility_closing": 2.0,
+    "shutdown": 2.0,
 }
 
 DEVICE_THRESHOLD = 100
@@ -30,7 +34,7 @@ def estimate_devices(event_type: str, employees_affected: int | None) -> int | N
     """Estimate the number of surplus devices from an event."""
     if employees_affected is None:
         # Bankruptcy and liquidation are always high-value even without employee count
-        if event_type in ("bankruptcy_ch7", "liquidation", "ceasing_operations"):
+        if event_type in ("bankruptcy_ch7", "bankruptcy_ch11", "liquidation", "ceasing_operations"):
             return 500  # Conservative estimate for unknown-size companies
         return None
 

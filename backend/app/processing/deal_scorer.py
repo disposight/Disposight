@@ -84,6 +84,10 @@ URGENCY_MAP: dict[str, float] = {
     "merger": 4.0,
     "acquisition": 4.0,
     "relocation": 4.0,
+    # Aliases for non-canonical types in existing data
+    "facility_closure": 14.0,
+    "facility_closing": 14.0,
+    "shutdown": 14.0,
 }
 
 # Human-readable urgency labels
