@@ -1,5 +1,6 @@
 import uuid
 
+import sentry_sdk
 import structlog
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,6 +13,14 @@ from starlette.responses import Response
 
 from app.config import settings
 from app.rate_limit import limiter
+
+if settings.sentry_dsn:
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        traces_sample_rate=0.1,
+        profiles_sample_rate=0.1,
+        environment="production" if not settings.debug else "development",
+    )
 
 structlog.configure(
     processors=[
@@ -100,7 +109,33 @@ def create_app() -> FastAPI:
 
     @app.get("/health")
     async def health():
-        return {"status": "ok"}
+        checks = {"db": "ok", "redis": "ok"}
+
+        # Check DB
+        try:
+            from sqlalchemy import text
+            from app.db.session import async_session_factory
+            async with async_session_factory() as session:
+                await session.execute(text("SELECT 1"))
+        except Exception as e:
+            checks["db"] = f"error: {e}"
+
+        # Check Redis
+        try:
+            import redis
+            if settings.redis_url:
+                r = redis.from_url(settings.redis_url, socket_connect_timeout=2)
+                r.ping()
+            else:
+                checks["redis"] = "not configured"
+        except Exception as e:
+            checks["redis"] = f"error: {e}"
+
+        healthy = all(v == "ok" for v in checks.values())
+        return JSONResponse(
+            status_code=200 if healthy else 503,
+            content={"status": "ok" if healthy else "degraded", "checks": checks},
+        )
 
     return app
 

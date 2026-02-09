@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     stripe_pro_price_id: str = ""
     stripe_enterprise_price_id: str = ""
 
+    # Sentry
+    sentry_dsn: str = ""
+
     # Frontend
     frontend_url: str = "http://localhost:3000"
     allowed_origins: str = ""
