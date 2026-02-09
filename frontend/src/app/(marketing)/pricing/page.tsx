@@ -62,30 +62,31 @@ export default function PricingPage() {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-3 gap-8">
           {plans.map((plan) => (
             <div
               key={plan.name}
-              className="p-6 rounded-lg"
+              className="p-8 rounded-xl flex flex-col"
               style={{
                 backgroundColor: "var(--bg-surface)",
                 border: plan.highlighted ? "2px solid var(--accent)" : "1px solid var(--border-default)",
+                boxShadow: plan.highlighted ? "0 0 30px rgba(16, 185, 129, 0.1)" : "0 2px 12px rgba(0, 0, 0, 0.2)",
               }}
             >
-              <h3 className="text-lg font-semibold mb-2" style={{ color: "var(--text-primary)" }}>
+              <h3 className="text-xl font-semibold mb-3" style={{ color: "var(--text-primary)" }}>
                 {plan.name}
               </h3>
-              <div className="flex items-end gap-1 mb-6">
-                <span className="text-3xl font-mono font-bold" style={{ color: "var(--text-primary)" }}>
+              <div className="flex items-end gap-1 mb-8">
+                <span className="text-4xl font-mono font-bold" style={{ color: "var(--text-primary)" }}>
                   {plan.price}
                 </span>
-                <span className="text-sm mb-1" style={{ color: "var(--text-muted)" }}>
+                <span className="text-sm mb-1.5" style={{ color: "var(--text-muted)" }}>
                   {plan.period}
                 </span>
               </div>
-              <ul className="space-y-2 mb-6">
+              <ul className="space-y-3 mb-10 flex-1">
                 {plan.features.map((feature) => (
-                  <li key={feature} className="flex items-center gap-2 text-sm" style={{ color: "var(--text-secondary)" }}>
+                  <li key={feature} className="flex items-center gap-3 text-sm" style={{ color: "var(--text-secondary)" }}>
                     <span style={{ color: "var(--accent)" }}>+</span>
                     {feature}
                   </li>
@@ -93,7 +94,7 @@ export default function PricingPage() {
               </ul>
               <Link
                 href="/register"
-                className="block w-full py-2 rounded-md text-sm font-medium text-center transition-colors"
+                className="block w-full py-3 rounded-md text-sm font-medium text-center transition-colors"
                 style={{
                   backgroundColor: plan.highlighted ? "var(--accent)" : "var(--bg-elevated)",
                   color: plan.highlighted ? "#fff" : "var(--text-secondary)",
