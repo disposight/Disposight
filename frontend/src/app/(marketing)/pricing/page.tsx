@@ -16,7 +16,7 @@ const plans = [
   },
   {
     name: "Professional",
-    price: "$299",
+    price: "$199",
     period: "/month",
     features: [
       "Everything in Starter",
