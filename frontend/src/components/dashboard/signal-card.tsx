@@ -1,5 +1,6 @@
 import type { Signal } from "@/lib/api";
 import { formatDistanceToNow } from "date-fns";
+import Link from "next/link";
 
 function scoreColor(score: number): string {
   if (score >= 80) return "var(--critical)";
@@ -28,8 +29,9 @@ export function SignalCard({ signal }: { signal: Signal }) {
   const timeAgo = formatDistanceToNow(new Date(signal.created_at), { addSuffix: true });
 
   return (
+    <Link href={`/dashboard/opportunities/${signal.company_id}/signals/${signal.id}`}>
     <div
-      className="p-4 rounded-lg transition-colors cursor-pointer"
+      className="p-4 rounded-lg transition-colors cursor-pointer hover:border-[var(--accent)]"
       style={{ backgroundColor: "var(--bg-surface)", border: "1px solid var(--border-default)" }}
     >
       <div className="flex items-start justify-between mb-2">
@@ -108,5 +110,6 @@ export function SignalCard({ signal }: { signal: Signal }) {
         <span>{signal.source_name}</span>
       </div>
     </div>
+    </Link>
   );
 }

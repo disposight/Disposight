@@ -6,13 +6,13 @@ import { useState } from "react";
 import { useNewSignals } from "@/lib/use-new-signals";
 
 const navItems = [
-  { label: "Intelligence", items: [
-    { href: "/dashboard", label: "Overview", icon: "◉" },
-    { href: "/dashboard/signals", label: "Signals", icon: "⚡", badge: true },
-    { href: "/dashboard/companies", label: "Companies", icon: "▣" },
+  { label: "Pipeline", items: [
+    { href: "/dashboard", label: "Deals", icon: "⚡", badge: true },
+    { href: "/dashboard/overview", label: "Overview", icon: "◉" },
     { href: "/dashboard/map", label: "Map", icon: "◎" },
   ]},
-  { label: "Configuration", items: [
+  { label: "My Work", items: [
+    { href: "/dashboard/pipeline", label: "My Pipeline", icon: "▣" },
     { href: "/dashboard/watchlist", label: "Watchlist", icon: "★" },
     { href: "/dashboard/alerts", label: "Alerts", icon: "▲" },
   ]},

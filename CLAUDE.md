@@ -113,10 +113,85 @@ cd backend && uv run pytest
 - **Embedded Stripe checkout** — Switched from redirect to in-page embedded checkout on Settings page
 - **Stripe packages** — `@stripe/react-stripe-js` + `@stripe/stripe-js` added to frontend
 
-### What's Left
-- **Auth flow test** — Manual test needed (register → login → dashboard)
-- **Stripe webhook endpoint** — Register `https://backend-production-97dd.up.railway.app/api/v1/billing/webhook` in Stripe dashboard
-- **NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY** — Set in Vercel env vars (needed for embedded checkout)
+### Deal Rank Score v2 (completed 2026-02-09, NOT YET COMMITTED)
+- `compute_deal_score()` now returns `DealScoreResult` dataclass (score, band, band_label, 8 ScoreFactors with points/max/summary, top_factors, penalty/boost flags)
+- Score bands: 85+ Immediate Pursuit (red), 70-84 High Priority (orange), 55-69 Qualified Pipeline (yellow), 0-54 Background (gray)
+- `DealScoreBadge` accepts optional `bandLabel` prop from API
+- New `score-breakdown.tsx`: `CompactScoreBreakdown` (top 3 bullets for cards) + `FullScoreBreakdown` (8 progress bars for detail page)
+- `OpportunityOut` has `score_band`, `score_band_label`, `top_factors`
+- `OpportunityDetailOut` has `score_breakdown`, `signal_velocity` (signals/month)
+- Distress pattern logging via structlog in `get_opportunity()` for future analysis
+- Scoring overhead: 6.2 microseconds/call (162k scores/sec) — negligible vs DB queries
+- All 7 backend tests pass, frontend builds clean, `tsc --noEmit` zero errors
+
+### What's Left — UNCOMMITTED CODE
+- **29 modified + 21 new files** in working directory — NOTHING since `d5febdc` has been deployed
+- Run `git status` to see full list — includes opportunities engine, deal scorer, watchlists, pipeline, settings, score breakdown UI, and more
+
+### Production Readiness Audit (2026-02-09)
+
+#### BLOCKERS (fix before anyone pays)
+
+1. **Stripe account mismatch** — Local `pk_test_51Qj0l2Rwv...` is from a DIFFERENT Stripe account than Railway's `sk_test_51Syegu...`. Frontend and backend talk to different Stripe accounts. Get matching `pk_live_`/`sk_live_` pair from the SAME account.
+
+2. **`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` not set on Vercel** — Embedded checkout calls `loadStripe(undefined)`. Users click Subscribe and nothing happens.
+
+3. **Stripe webhook not registered** — `STRIPE_WEBHOOK_SECRET` is set on Railway but endpoint not registered in Stripe dashboard. Users pay but plan never updates. Register: `https://backend-production-97dd.up.railway.app/api/v1/billing/webhook`
+
+4. **`price_id` parameter mismatch in billing.py** — Frontend sends `price_id` in JSON body, but `billing.py` reads it as a query parameter (`price_id: str = ""`). Pro plan checkout silently defaults to Starter. Fix: change to a Pydantic body model.
+
+5. **Registration failure is silent** — If `api.authCallback()` fails during signup, user gets Supabase auth with no tenant record. Every API call returns 403 forever. Need retry on dashboard load.
+
+6. **Commit and deploy** — 50 files uncommitted. Production is running stale code.
+
+#### HIGH PRIORITY (fix before scaling)
+
+7. **No error monitoring** — No Sentry/Datadog/anything. Production errors vanish silently.
+8. **No global exception handler** — Unhandled exceptions return raw 500s, no structured error logging.
+9. **Missing `customer.subscription.updated` webhook handler** — Plan changes via Stripe billing portal not reflected. Only `checkout.session.completed` and `subscription.deleted` handled.
+10. **Test coverage: 3.1%** — 7 tests across 29 modules. Deal scorer, billing, all 4 ingestion pipelines, all API endpoints have zero tests.
+11. **No security headers** — Missing HSTS, X-Frame-Options, CSP, X-Content-Type-Options.
+12. **Rate limiter JWT decode without signature verification** — `rate_limit.py` decodes JWTs with `verify_signature=False` for keying. Attacker can craft fake JWT to exhaust another user's rate limit.
+13. **Pipeline endpoints have no admin check** — Any authenticated user (including free) can trigger `/pipelines/run`, burning OpenAI credits.
+
+#### MEDIUM PRIORITY (fix soon after launch)
+
+14. **RLS InitPlan performance** — 6 tenant-isolation policies re-evaluate `auth.jwt()` per row. Fix: use `(SELECT auth.jwt() ->> 'tenant_id')` instead.
+15. **7 unindexed foreign keys** — `alert_history.alert_id_fkey`, `alert_history.signal_id_fkey`, `alert_history.user_id_fkey`, `signals.raw_signal_id_fkey`, `users.tenant_id_fkey`, `watchlists.added_by_fkey`, `watchlists.company_id_fkey`.
+16. **Supabase leaked password protection disabled** — Enable in Dashboard > Auth > Security.
+17. **Signals endpoint latency** — 700-900ms avg at 318 signals. Will degrade with volume.
+18. **DB connection limit ~12 concurrent** — Supabase bottleneck. Pool is 10+20 overflow but server caps at ~12. Needs PgBouncer/Supavisor before scale.
+19. **Health endpoint shallow** — Returns `{"status":"ok"}` without checking DB or Redis.
+20. **Stripe keys are test mode** — `sk_test_`/`pk_test_` must switch to live keys for real payments.
+
+#### Suggested Attack Order
+
+| Step | What | Time |
+|------|------|------|
+| 1 | Fix Stripe key mismatch — get matching `pk_live_`/`sk_live_` pair | 15 min |
+| 2 | Fix `price_id` body vs query param bug in `billing.py` | 5 min |
+| 3 | Add tenant creation retry on dashboard load | 30 min |
+| 4 | Commit everything, deploy to Railway + Vercel | 10 min |
+| 5 | Set `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` on Vercel | 2 min |
+| 6 | Register webhook URL in Stripe dashboard | 5 min |
+| 7 | Add Sentry to backend + frontend | 30 min |
+| 8 | Add global exception handler + security headers | 20 min |
+| 9 | Add `customer.subscription.updated` handler | 15 min |
+| 10 | Write tests for deal_scorer + billing + auth | 2-3 hrs |
+
+### Load Test Results (2026-02-09)
+
+| Metric | Value |
+|--------|-------|
+| `/health` throughput | 1,291 req/s (50 concurrent) |
+| `/health` P95 | 33ms |
+| `/api/v1/signals` avg | 874ms (single), 814ms (5 concurrent) |
+| `/api/v1/companies` avg | 356ms (single), OK at 10 concurrent |
+| DB concurrency breaking point | ~12-15 (500 errors at 15+) |
+| Rate limiting | Engages correctly at ~20 req on 60/min endpoints |
+| Sustained throughput (200 req) | 665 req/s, P99=33ms on `/health` |
+| `compute_deal_score()` | 6.2μs/call, 162k/sec |
+| `ScoreBreakdownOut` payload | 1,155 bytes per detail response |
 
 ### GitHub
 - Repo: `disposight/Disposight`
@@ -145,5 +220,7 @@ cd backend && uv run pytest
 - `frontend/src/app/dashboard/layout.tsx` — Wraps children in PlanProvider
 - `backend/app/rate_limit.py` — SlowAPI limiter instance + key function
 - `backend/app/processing/llm_client.py` — OpenAI-powered, model map: "haiku" → gpt-4o-mini, "sonnet" → gpt-4o
+- `backend/app/processing/deal_scorer.py` — DealScoreResult with 8-factor breakdown, bands, summaries
+- `frontend/src/components/dashboard/score-breakdown.tsx` — Compact + Full score breakdown display
 - Gated pages: Overview, Signals, Companies, Company detail, Map, Watchlist, Alerts
 - Ungated pages: Settings, Help

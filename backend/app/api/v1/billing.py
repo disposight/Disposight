@@ -1,5 +1,6 @@
 import stripe
 from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel
 
 from app.api.v1.deps import DbSession, TenantId
 from app.config import settings
@@ -20,9 +21,13 @@ def _price_to_plan(price_id: str) -> str:
     return mapping.get(price_id, "starter")
 
 
+class CheckoutRequest(BaseModel):
+    price_id: str = ""
+
+
 @router.post("/checkout")
 @limiter.limit("5/minute")
-async def create_checkout(request: Request, db: DbSession, tenant_id: TenantId, price_id: str = ""):
+async def create_checkout(request: Request, body: CheckoutRequest, db: DbSession, tenant_id: TenantId):
     if not settings.stripe_secret_key:
         raise HTTPException(status_code=503, detail="Billing not configured")
 
@@ -41,7 +46,7 @@ async def create_checkout(request: Request, db: DbSession, tenant_id: TenantId, 
     session = stripe.checkout.Session.create(
         customer=tenant.stripe_customer_id,
         mode="subscription",
-        line_items=[{"price": price_id or settings.stripe_starter_price_id, "quantity": 1}],
+        line_items=[{"price": body.price_id or settings.stripe_starter_price_id, "quantity": 1}],
         ui_mode="embedded",
         return_url=f"{settings.frontend_url}/dashboard/settings?billing=success",
     )
@@ -116,6 +121,31 @@ async def stripe_webhook(request: Request, db: DbSession):
                     status="active",
                 )
                 db.add(sub)
+
+    elif event["type"] == "customer.subscription.updated":
+        sub_data = event["data"]["object"]
+        from sqlalchemy import select
+
+        result = await db.execute(
+            select(Subscription).where(
+                Subscription.stripe_subscription_id == sub_data["id"]
+            )
+        )
+        sub = result.scalar_one_or_none()
+        if sub:
+            # Update plan based on current price
+            if sub_data["items"]["data"]:
+                price_id = sub_data["items"]["data"][0]["price"]["id"]
+                new_plan = _price_to_plan(price_id)
+                sub.plan_name = new_plan
+                sub.status = sub_data["status"]
+
+                tenant = await db.get(Tenant, sub.tenant_id)
+                if tenant:
+                    if sub_data["status"] == "active":
+                        tenant.plan = new_plan
+                    elif sub_data["status"] in ("past_due", "unpaid"):
+                        tenant.plan = "free"
 
     elif event["type"] == "customer.subscription.deleted":
         sub_data = event["data"]["object"]

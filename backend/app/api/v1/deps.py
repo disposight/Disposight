@@ -70,5 +70,21 @@ async def get_tenant_id(
     return user.tenant_id
 
 
+async def require_admin(
+    user_id: UUID = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+) -> UUID:
+    """Require the user to have admin or owner role."""
+    from app.models import User
+
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=403, detail="User not found")
+    if user.role not in ("owner", "admin"):
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return user_id
+
+
 CurrentUserId = Annotated[UUID, Depends(get_current_user_id)]
 TenantId = Annotated[UUID, Depends(get_tenant_id)]
+AdminUserId = Annotated[UUID, Depends(require_admin)]

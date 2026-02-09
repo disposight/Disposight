@@ -60,6 +60,8 @@ async def process_pending_signals(db: AsyncSession) -> dict:
 
             # Step 4: Device estimation
             employees = entities.get("employees_affected") or raw.employees_affected
+            if not employees and company.employee_count:
+                employees = company.employee_count
             device_estimate = estimate_devices(
                 classification.get("signal_type", raw.event_type),
                 employees,

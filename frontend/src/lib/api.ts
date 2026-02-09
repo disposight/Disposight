@@ -43,6 +43,8 @@ export const api = {
     return apiFetch<SignalListResponse>(`/signals${qs}`);
   },
   getSignal: (id: string) => apiFetch<Signal>(`/signals/${id}`),
+  getSignalAnalysis: (id: string, forceRefresh?: boolean) =>
+    apiFetch<SignalAnalysis>(`/signals/${id}/analysis${forceRefresh ? "?force_refresh=true" : ""}`),
 
   // Companies
   getCompanies: (params?: Record<string, string>) => {
@@ -51,6 +53,24 @@ export const api = {
   },
   getCompany: (id: string) => apiFetch<Company>(`/companies/${id}`),
   getCompanySignals: (id: string) => apiFetch<Signal[]>(`/companies/${id}/signals`),
+
+  // Opportunities
+  getOpportunities: (params?: Record<string, string>) => {
+    const qs = params ? "?" + new URLSearchParams(params).toString() : "";
+    return apiFetch<OpportunityListResponse>(`/opportunities${qs}`);
+  },
+  getOpportunity: (companyId: string) =>
+    apiFetch<OpportunityDetail>(`/opportunities/${companyId}`),
+  getCommandCenterStats: () =>
+    apiFetch<CommandCenterStats>("/opportunities/stats"),
+
+  // Revenue Settings
+  getRevenueSettings: () => apiFetch<RevenueSettings>("/settings/revenue"),
+  updateRevenueSettings: (pricePerDevice: number) =>
+    apiFetch<RevenueSettings>("/settings/revenue", {
+      method: "PUT",
+      body: JSON.stringify({ price_per_device: pricePerDevice }),
+    }),
 
   // Watchlists
   getWatchlist: () => apiFetch<WatchlistItem[]>("/watchlists"),
@@ -61,6 +81,15 @@ export const api = {
     }),
   removeFromWatchlist: (id: string) =>
     apiFetch<void>(`/watchlists/${id}`, { method: "DELETE" }),
+  claimLead: (id: string) =>
+    apiFetch<WatchlistItem>(`/watchlists/${id}/claim`, { method: "PUT" }),
+  updateLeadStatus: (id: string, status: string) =>
+    apiFetch<WatchlistItem>(`/watchlists/${id}/status`, {
+      method: "PUT",
+      body: JSON.stringify({ status }),
+    }),
+  getMyPipeline: () => apiFetch<WatchlistItem[]>("/watchlists/my-pipeline"),
+  getTeamPipeline: () => apiFetch<WatchlistItem[]>("/watchlists/team-pipeline"),
 
   // Alerts
   getAlerts: () => apiFetch<Alert[]>("/alerts"),
@@ -107,6 +136,7 @@ export interface Signal {
   severity_score: number;
   source_name: string;
   source_url: string | null;
+  source_published_at: string | null;
   location_city: string | null;
   location_state: string | null;
   affected_employees: number | null;
@@ -121,6 +151,26 @@ export interface SignalListResponse {
   total: number;
   page: number;
   per_page: number;
+}
+
+export interface SignalSource {
+  name: string;
+  url: string | null;
+  signal_type: string;
+  title: string;
+}
+
+export interface SignalAnalysis {
+  event_breakdown: string;
+  itad_impact: string;
+  company_context: string;
+  asset_opportunity: string;
+  opportunity_score: number;
+  recommended_actions: string[];
+  correlated_signals_summary: string | null;
+  sources: SignalSource[];
+  generated_at: string;
+  cached: boolean;
 }
 
 export interface Company {
@@ -148,6 +198,9 @@ export interface WatchlistItem {
   id: string;
   company_id: string;
   notes: string | null;
+  status: string;
+  claimed_by: string | null;
+  claimed_at: string | null;
   created_at: string;
   company_name: string | null;
   composite_risk_score: number | null;
@@ -212,4 +265,80 @@ export interface AuthCallbackResponse {
   user_id: string;
   tenant_id: string;
   tenant_slug: string;
+}
+
+// Score breakdown types
+export interface ScoreFactor {
+  name: string;
+  points: number;
+  max_points: number;
+  summary: string;
+}
+
+export interface ScoreBreakdown {
+  factors: ScoreFactor[];
+  top_factors: string[];
+  band: string;
+  band_label: string;
+  penalty_applied: boolean;
+  boost_applied: boolean;
+}
+
+// Opportunity types
+export interface Opportunity {
+  company_id: string;
+  company_name: string;
+  ticker: string | null;
+  industry: string | null;
+  headquarters_state: string | null;
+  employee_count: number | null;
+  composite_risk_score: number;
+  risk_trend: string;
+  deal_score: number;
+  score_band: string;
+  score_band_label: string;
+  signal_count: number;
+  total_device_estimate: number;
+  revenue_estimate: number;
+  latest_signal_at: string;
+  disposition_window: string;
+  signal_types: string[];
+  source_names: string[];
+  source_diversity: number;
+  is_watched: boolean;
+  top_factors: string[];
+}
+
+export interface OpportunityListResponse {
+  opportunities: Opportunity[];
+  total: number;
+  page: number;
+  per_page: number;
+  total_pipeline_value: number;
+  total_devices: number;
+}
+
+export interface OpportunityDetail extends Opportunity {
+  signals: Signal[];
+  avg_confidence: number;
+  avg_severity: number;
+  recommended_actions: string[] | null;
+  asset_opportunity: string | null;
+  score_breakdown: ScoreBreakdown | null;
+  signal_velocity: number;
+}
+
+export interface CommandCenterStats {
+  total_pipeline_value: number;
+  pipeline_value_change_7d: number;
+  new_opportunities_today: number;
+  hot_opportunities: number;
+  total_active_opportunities: number;
+  total_devices_in_pipeline: number;
+  watchlist_count: number;
+  top_opportunities: Opportunity[];
+}
+
+export interface RevenueSettings {
+  price_per_device: number;
 }

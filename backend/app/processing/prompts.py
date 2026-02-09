@@ -65,3 +65,42 @@ Return as JSON:
 }}
 
 Return ONLY valid JSON."""
+
+SIGNAL_ANALYSIS_PROMPT = """You are an ITAD (IT Asset Disposition) intelligence analyst. Analyze this corporate distress signal and produce an actionable brief for an ITAD sales team.
+
+## Signal Data
+- Type: {signal_type}
+- Title: {title}
+- Summary: {summary}
+- Severity Score: {severity_score}/100
+- Confidence Score: {confidence_score}/100
+- Affected Employees: {affected_employees}
+- Estimated Devices: {device_estimate}
+- Location: {location}
+
+## Company Profile
+- Name: {company_name}
+- Industry: {industry}
+- Sector: {sector}
+- Employee Count: {employee_count}
+- Risk Score: {risk_score}/100
+- Risk Trend: {risk_trend}
+
+## Source Text (truncated)
+{raw_text}
+
+## Correlated Signals
+{correlated_signals}
+
+Produce a JSON analysis with these fields:
+{{{{
+  "event_breakdown": "2-3 paragraph analysis of what happened, the scale, and timeline. Be specific about facts from the source text.",
+  "itad_impact": "2-3 paragraph assessment of what this means for IT asset recovery. Estimate surplus equipment types (laptops, desktops, monitors, servers, networking gear, phones) and volumes based on employee count and event type.",
+  "company_context": "1-2 paragraphs on the company's situation — financial health, industry position, and how this event fits their trajectory.",
+  "asset_opportunity": "1-2 paragraphs on the specific asset recovery opportunity. Consider facility types (office vs manufacturing vs data center), typical IT refresh cycles, and urgency of disposition.",
+  "opportunity_score": 0-100 integer rating the ITAD opportunity (consider volume, urgency, likelihood of surplus, competition),
+  "recommended_actions": ["5 specific, actionable next steps for an ITAD sales rep to pursue this lead. Include who to contact, what to propose, and timing."],
+  "correlated_signals_summary": "If correlated signals exist, summarize what the multi-source confirmation means for confidence. Otherwise null."
+}}}}
+
+Return ONLY valid JSON, no explanation."""

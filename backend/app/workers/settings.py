@@ -58,6 +58,25 @@ async def process_raw_signals(ctx):
         return result
 
 
+async def enrich_companies(ctx):
+    from app.db.session import async_session_factory
+    from app.processing.company_enricher import enrich_pending_companies
+
+    async with async_session_factory() as db:
+        result = await enrich_pending_companies(db, batch_size=20)
+        await db.commit()
+        return result
+
+
+async def backfill_company_enrichment(ctx):
+    from app.db.session import async_session_factory
+    from app.processing.company_enricher import backfill_all_companies
+
+    async with async_session_factory() as db:
+        result = await backfill_all_companies(db, batch_size=30)
+        return result
+
+
 async def send_daily_digest(ctx):
     from app.db.session import async_session_factory
     from app.email.sender import send_digest
@@ -75,6 +94,8 @@ class WorkerSettings:
         collect_sec_edgar,
         collect_courtlistener,
         process_raw_signals,
+        enrich_companies,
+        backfill_company_enrichment,
         send_daily_digest,
     ]
     cron_jobs = [
@@ -83,5 +104,6 @@ class WorkerSettings:
         cron(collect_sec_edgar, hour={1, 7, 13, 19}),
         cron(collect_courtlistener, hour={3, 15}),
         cron(process_raw_signals, hour=None, minute={10, 40}),
+        cron(enrich_companies, hour={2, 8, 14, 20}, minute=30),
         cron(send_daily_digest, hour=13, minute=0),
     ]

@@ -133,7 +133,7 @@ const guidesSections = [
     content: [
       "Each company's risk score is a composite of: signal count (more signals = higher risk), signal severity (critical signals weigh more), signal recency (recent signals weigh more than old ones), signal diversity (multiple signal types increase risk), and estimated total device count.",
       "The trend indicator (↑ rising, → stable, ↓ declining) shows how the risk score has changed over the past 30 days. A rising trend on a high-risk company is your strongest signal to take action.",
-      "Risk scores update automatically as new signals are ingested and old signals age out. Check the Companies page regularly to spot emerging opportunities.",
+      "Risk scores update automatically as new signals are ingested and old signals age out. Check the Deals page regularly to spot emerging deals.",
     ],
   },
   {
@@ -248,6 +248,35 @@ export default function HelpPage() {
           </div>
         </div>
       )}
+
+      {/* Contact Support */}
+      <div
+        className="rounded-lg p-6"
+        style={{
+          backgroundColor: "var(--bg-surface)",
+          border: "1px solid var(--border-default)",
+        }}
+      >
+        <h2
+          className="text-base font-semibold mb-1"
+          style={{ color: "var(--text-primary)" }}
+        >
+          Need help?
+        </h2>
+        <p className="text-sm mb-4" style={{ color: "var(--text-secondary)" }}>
+          Report a bug, request a feature, or reach out with any questions.
+        </p>
+        <a
+          href="mailto:support@disposight.com"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors"
+          style={{
+            backgroundColor: "var(--accent)",
+            color: "#fff",
+          }}
+        >
+          Contact Support
+        </a>
+      </div>
 
       {/* How-to Guide Tab */}
       {tab === "guide" && (

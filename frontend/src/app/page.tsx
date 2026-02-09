@@ -29,7 +29,7 @@ const features = [
   {
     title: "Instant Alerts",
     description:
-      "Get notified the moment a high-value opportunity matches your watchlist.",
+      "Get notified the moment a high-value deal matches your watchlist.",
   },
 ];
 

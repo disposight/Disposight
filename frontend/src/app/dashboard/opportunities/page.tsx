@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
-export default function CompaniesRedirect() {
+export default function OpportunitiesRedirect() {
   redirect("/dashboard");
 }

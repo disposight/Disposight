@@ -7,7 +7,7 @@ from fastapi import APIRouter, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import func, select
 
-from app.api.v1.deps import CurrentUserId, DbSession
+from app.api.v1.deps import AdminUserId, CurrentUserId, DbSession
 from app.models import RawSignal, Signal
 from app.rate_limit import limiter
 
@@ -17,6 +17,11 @@ router = APIRouter(prefix="/pipelines", tags=["pipelines"])
 class NewSignalsResponse(BaseModel):
     new_count: int
     latest_at: str | None
+
+
+class EnrichResponse(BaseModel):
+    message: str
+    stats: dict
 
 
 class PipelineRunResponse(BaseModel):
@@ -61,7 +66,7 @@ async def check_new_signals(
 
 @router.post("/run", response_model=PipelineRunResponse)
 @limiter.limit("5/minute")
-async def trigger_pipeline_run(request: Request, user_id: CurrentUserId, db: DbSession):
+async def trigger_pipeline_run(request: Request, user_id: AdminUserId, db: DbSession):
     """Manually trigger all 4 collectors + processing pipeline.
     Runs collectors concurrently, then processes raw signals.
     """
@@ -111,3 +116,25 @@ async def trigger_pipeline_run(request: Request, user_id: CurrentUserId, db: DbS
 
     results.processing = {"processed": total_processed}
     return results
+
+
+@router.post("/enrich-companies", response_model=EnrichResponse)
+@limiter.limit("5/minute")
+async def trigger_company_enrichment(
+    request: Request,
+    user_id: AdminUserId,
+    db: DbSession,
+    backfill: bool = Query(False, description="Enrich ALL pending companies (not just one batch)"),
+):
+    """Enrich pending companies with firmographic data from SEC EDGAR + LLM."""
+    from app.processing.company_enricher import backfill_all_companies, enrich_pending_companies
+
+    if backfill:
+        from app.db.session import async_session_factory
+
+        async with async_session_factory() as session:
+            stats = await backfill_all_companies(session, batch_size=30)
+        return EnrichResponse(message="Backfill complete", stats=stats)
+
+    stats = await enrich_pending_companies(db, batch_size=20)
+    return EnrichResponse(message="Batch enrichment complete", stats=stats)

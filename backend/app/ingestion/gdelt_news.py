@@ -18,6 +18,12 @@ HIGH_INTENT_KEYWORDS = [
     "liquidation",
     "ceasing operations",
     "company relocating",
+    "chapter 7",
+    "mass layoff",
+    "workforce reduction",
+    "downsizing",
+    "asset sale",
+    "corporate restructuring",
 ]
 
 GDELT_DOC_API = "https://api.gdeltproject.org/api/v2/doc/doc"
@@ -95,5 +101,11 @@ class GdeltCollector(BaseCollector):
             "liquidation": "liquidation",
             "ceasing operations": "ceasing_operations",
             "company relocating": "relocation",
+            "chapter 7": "bankruptcy_ch7",
+            "mass layoff": "layoff",
+            "workforce reduction": "layoff",
+            "downsizing": "layoff",
+            "asset sale": "liquidation",
+            "corporate restructuring": "restructuring",
         }
         return mapping.get(keyword, "unknown")

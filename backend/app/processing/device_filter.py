@@ -19,6 +19,7 @@ DEVICE_MULTIPLIERS = {
     "acquisition": 1.0,
     "liquidation": 3.0,
     "ceasing_operations": 3.0,
+    "restructuring": 1.2,       # Partial surplus from reorg
     "relocation": 0.5,          # May keep equipment
 }
 

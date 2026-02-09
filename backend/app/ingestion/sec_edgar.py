@@ -1,4 +1,5 @@
 import asyncio
+import re
 from datetime import datetime
 
 import httpx
@@ -32,6 +33,36 @@ class SecEdgarCollector(BaseCollector):
     source_name = "SEC EDGAR"
     source_type = "sec_edgar"
 
+    def _classify_filing(self, source: dict) -> str:
+        """Classify 8-K filing event type from content keywords."""
+        display_names = source.get("display_names", [])
+        first_name = ""
+        if isinstance(display_names, list) and display_names:
+            first_name = display_names[0] if isinstance(display_names[0], str) else str(display_names[0])
+
+        text = " ".join([
+            source.get("file_description", ""),
+            first_name,
+            str(source.get("_highlight", "")),
+        ]).lower()
+
+        # Check for specific event types (most specific first)
+        if any(kw in text for kw in ["bankruptcy", "chapter 11", "chapter 7", "insolvency"]):
+            if "chapter 7" in text:
+                return "bankruptcy_ch7"
+            return "bankruptcy_ch11"
+        if any(kw in text for kw in ["merger", "acquisition", "acquire", "business combination"]):
+            return "merger"
+        if any(kw in text for kw in ["asset sale", "asset disposal", "divestiture"]):
+            return "liquidation"
+        if any(kw in text for kw in ["facility closure", "plant closing", "office closure"]):
+            return "facility_shutdown"
+        if any(kw in text for kw in ["workforce reduction", "layoff", "headcount reduction"]):
+            return "layoff"
+        if any(kw in text for kw in ["ceasing operations", "wind down", "dissolution"]):
+            return "ceasing_operations"
+        return "restructuring"
+
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, max=16))
     async def _search_filings(self) -> list[dict]:
         """Search recent 8-K filings via EDGAR full-text search API."""
@@ -50,7 +81,7 @@ class SecEdgarCollector(BaseCollector):
             resp = await client.get(
                 "https://efts.sec.gov/LATEST/search-index",
                 params={
-                    "q": '"restructuring" OR "facility closure" OR "workforce reduction"',
+                    "q": '"restructuring" OR "facility closure" OR "workforce reduction" OR "merger" OR "asset sale" OR "ceasing operations"',
                     "forms": "8-K",
                 },
                 headers=headers,
@@ -93,6 +124,12 @@ class SecEdgarCollector(BaseCollector):
                 else:
                     company_name = source.get("entity_name", "Unknown")
 
+                # Strip embedded ticker/CIK patterns like "(TER)  (CIK 0000097210)"
+                company_name = re.sub(r'\s*\([A-Z]{1,5}\)\s*', ' ', str(company_name))
+                company_name = re.sub(r'\s*\(CIK \d+\)\s*', '', company_name)
+                company_name = re.sub(r'\s*/[A-Z]{2,3}/\s*', ' ', company_name)
+                company_name = re.sub(r'\s{2,}', ' ', company_name).strip()
+
                 filing_date = source.get("file_date") or source.get("period_of_report")
                 event_date = None
                 if filing_date:
@@ -107,9 +144,11 @@ class SecEdgarCollector(BaseCollector):
                     if accession:
                         file_url = f"https://www.sec.gov/Archives/edgar/data/{source.get('ciks', [''])[0]}/{accession}"
 
+                event_type = self._classify_filing(source)
+
                 signals.append({
                     "company_name": str(company_name)[:500],
-                    "event_type": "restructuring",
+                    "event_type": event_type,
                     "event_date": event_date,
                     "employees_affected": None,
                     "locations": [],

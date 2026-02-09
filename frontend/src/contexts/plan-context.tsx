@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { api, type UserProfile } from "@/lib/api";
+import { createClient } from "@/lib/supabase";
 
 interface PlanContextValue {
   plan: string | null;
@@ -28,11 +29,36 @@ export function PlanProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api
-      .getMe()
-      .then(setUser)
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    async function init() {
+      try {
+        const profile = await api.getMe();
+        setUser(profile);
+      } catch (err) {
+        // If getMe fails (403/404), the tenant record may be missing.
+        // Attempt to create it from the Supabase session, then retry.
+        const message = err instanceof Error ? err.message : "";
+        if (message.includes("tenant") || message.includes("not found") || message.includes("403")) {
+          try {
+            const supabase = createClient();
+            const { data: { user: sbUser } } = await supabase.auth.getUser();
+            if (sbUser?.email) {
+              await api.authCallback({
+                email: sbUser.email,
+                full_name: sbUser.user_metadata?.full_name,
+              });
+              // Retry getMe after tenant creation
+              const profile = await api.getMe();
+              setUser(profile);
+            }
+          } catch {
+            // Still failed — user will see free/unauthenticated state
+          }
+        }
+      } finally {
+        setLoading(false);
+      }
+    }
+    init();
   }, []);
 
   const plan = user?.plan ?? null;

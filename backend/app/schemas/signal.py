@@ -36,3 +36,23 @@ class SignalListResponse(BaseModel):
     total: int
     page: int
     per_page: int
+
+
+class SignalSourceOut(BaseModel):
+    name: str
+    url: str | None = None
+    signal_type: str
+    title: str
+
+
+class SignalAnalysisOut(BaseModel):
+    event_breakdown: str
+    itad_impact: str
+    company_context: str
+    asset_opportunity: str
+    opportunity_score: int
+    recommended_actions: list[str]
+    correlated_signals_summary: str | None = None
+    sources: list[SignalSourceOut] = []
+    generated_at: str
+    cached: bool = False
