@@ -3,14 +3,14 @@
 import { useState, useEffect, useRef } from "react";
 
 export function AmbientEffects() {
-  const gradientRef = useRef<HTMLDivElement>(null);
   const [ripples, setRipples] = useState<{ id: number; x: number; y: number }[]>([]);
   const [scrolled, setScrolled] = useState(false);
   const floatingRef = useRef<HTMLElement[]>([]);
 
-  // Mouse-following gradient — direct DOM updates, no re-renders
+  // Mouse-following glow — direct DOM updates, no re-renders
+  const glowRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const el = gradientRef.current;
+    const el = glowRef.current;
     if (!el) return;
     const onMove = (e: MouseEvent) => {
       el.style.transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0) translate(-50%, -50%)`;
@@ -164,13 +164,16 @@ export function AmbientEffects() {
           transform: translateY(0);
         }
 
-        .ds-gradient {
+        .ds-glow {
           position: fixed;
           top: 0;
           left: 0;
+          width: 160px;
+          height: 160px;
           pointer-events: none;
           border-radius: 9999px;
-          background: radial-gradient(circle, rgba(16,185,129,0.15), rgba(16,185,129,0.08), transparent 70%);
+          background: radial-gradient(circle, rgba(16,185,129,0.15), rgba(16,185,129,0.06), transparent 70%);
+          filter: blur(25px);
           transform: translate3d(0, 0, 0) translate(-50%, -50%);
           will-change: transform, opacity;
           transition: opacity 300ms ease-out;
@@ -178,12 +181,12 @@ export function AmbientEffects() {
         }
         @keyframes ds-grid-draw {
           0% { stroke-dashoffset: 1000; opacity: 0; }
-          50% { opacity: 0.3; }
-          100% { stroke-dashoffset: 0; opacity: 0.15; }
+          50% { opacity: 0.5; }
+          100% { stroke-dashoffset: 0; opacity: 0.4; }
         }
         @keyframes ds-pulse {
-          0%, 100% { opacity: 0.1; transform: scale(1); }
-          50% { opacity: 0.35; transform: scale(1.2); }
+          0%, 100% { opacity: 0.25; transform: scale(1); }
+          50% { opacity: 0.6; transform: scale(1.2); }
         }
         @keyframes ds-float {
           0%, 100% { transform: translateY(0) translateX(0); opacity: 0.15; }
@@ -200,15 +203,15 @@ export function AmbientEffects() {
           100% { transform: translate(-50%, -50%) scale(12); opacity: 0; }
         }
         .ds-grid-line {
-          stroke: rgba(16,185,129,0.35);
-          stroke-width: 0.5;
+          stroke: rgba(16,185,129,0.5);
+          stroke-width: 0.8;
           opacity: 0;
           stroke-dasharray: 5 5;
           stroke-dashoffset: 1000;
           animation: ds-grid-draw 2.5s ease-out forwards;
         }
         .ds-dot {
-          fill: rgba(16,185,129,0.4);
+          fill: rgba(16,185,129,0.7);
           opacity: 0;
           animation: ds-pulse 4s ease-in-out infinite;
         }
@@ -287,8 +290,8 @@ export function AmbientEffects() {
             <path
               d="M 60 0 L 0 0 0 60"
               fill="none"
-              stroke="rgba(16,185,129,0.18)"
-              strokeWidth="0.5"
+              stroke="rgba(16,185,129,0.35)"
+              strokeWidth="0.6"
             />
           </pattern>
         </defs>
@@ -299,8 +302,8 @@ export function AmbientEffects() {
         <line x1="0" y1="80%" x2="100%" y2="80%" className="ds-grid-line" style={{ animationDelay: "1s" }} />
         <line x1="20%" y1="0" x2="20%" y2="100%" className="ds-grid-line" style={{ animationDelay: "1.5s" }} />
         <line x1="80%" y1="0" x2="80%" y2="100%" className="ds-grid-line" style={{ animationDelay: "2s" }} />
-        <line x1="50%" y1="0" x2="50%" y2="100%" className="ds-grid-line" style={{ animationDelay: "2.5s", opacity: "0.03" }} />
-        <line x1="0" y1="50%" x2="100%" y2="50%" className="ds-grid-line" style={{ animationDelay: "3s", opacity: "0.03" }} />
+        <line x1="50%" y1="0" x2="50%" y2="100%" className="ds-grid-line" style={{ animationDelay: "2.5s", opacity: "0.2" }} />
+        <line x1="0" y1="50%" x2="100%" y2="50%" className="ds-grid-line" style={{ animationDelay: "3s", opacity: "0.2" }} />
 
         {/* Intersection dots */}
         <circle cx="20%" cy="20%" r="2" className="ds-dot" style={{ animationDelay: "3s" }} />
@@ -335,12 +338,8 @@ export function AmbientEffects() {
       {/* Shooting stars container — populated via DOM */}
       <div ref={starsRef} className="ds-stars" />
 
-      {/* Mouse gradient — positioned via ref, no re-renders */}
-      <div
-        ref={gradientRef}
-        className="ds-gradient w-60 h-60 sm:w-80 sm:h-80 md:w-96 md:h-96"
-        style={{ opacity: 0, filter: "blur(40px)" }}
-      />
+      {/* Mouse glow */}
+      <div ref={glowRef} className="ds-glow" style={{ opacity: 0 }} />
 
       {/* Click ripples */}
       {ripples.map((r) => (

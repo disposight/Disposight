@@ -188,7 +188,7 @@ export default function SettingsPage() {
       {showUpgrade && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ backgroundColor: "rgba(0, 0, 0, 0.7)" }}
+          style={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }}
           onClick={(e) => {
             if (e.target === e.currentTarget) setShowUpgrade(false);
           }}
@@ -196,7 +196,7 @@ export default function SettingsPage() {
           <div
             className="w-full max-w-2xl rounded-xl p-6 shadow-2xl"
             style={{
-              backgroundColor: "var(--bg-surface)",
+              backgroundColor: "#2a2a35",
               border: "1px solid var(--border-default)",
             }}
           >

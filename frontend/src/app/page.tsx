@@ -234,6 +234,12 @@ export default function HomePage() {
           Detect surplus IT equipment{" "}
           <span style={{ color: "var(--accent)" }}>before your competitors</span>
         </h1>
+        <img
+          src="/logo.png"
+          alt="DispoSight"
+          className="hero-heading mx-auto mb-6 h-20 sm:h-28 md:h-32"
+          style={{ mixBlendMode: "screen" }}
+        />
         <p
           className="hero-subtitle text-base sm:text-lg md:text-xl max-w-2xl mx-auto mb-8 sm:mb-10 leading-relaxed"
           style={{ color: "var(--text-secondary)" }}

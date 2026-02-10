@@ -326,10 +326,10 @@ export function UpgradeFlow({
               key={plan.id}
               className="relative rounded-lg p-5 transition-colors"
               style={{
-                backgroundColor: "var(--bg-base)",
+                backgroundColor: "#32323e",
                 border: plan.highlighted
                   ? "1px solid var(--accent)"
-                  : "1px solid var(--border-default)",
+                  : "1px solid #4a4a55",
               }}
             >
               {plan.highlighted && (
@@ -399,7 +399,7 @@ export function UpgradeFlow({
                     : {
                         backgroundColor: "transparent",
                         color: "var(--text-primary)",
-                        border: "1px solid var(--border-default)",
+                        border: "1px solid #4a4a55",
                       }
                 }
               >
