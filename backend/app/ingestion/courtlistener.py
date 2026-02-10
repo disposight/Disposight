@@ -52,7 +52,7 @@ class CourtListenerCollector(BaseCollector):
             return {}
 
         headers = {
-            "User-Agent": "DispoSight/1.0 contact@disposight.com",
+            "User-Agent": "DispoSight/1.0 support@disposight.com",
             "Authorization": f"Token {settings.courtlistener_api_key}",
         }
 
@@ -83,7 +83,7 @@ class CourtListenerCollector(BaseCollector):
             return []
 
         headers = {
-            "User-Agent": "DispoSight/1.0 contact@disposight.com",
+            "User-Agent": "DispoSight/1.0 support@disposight.com",
             "Authorization": f"Token {settings.courtlistener_api_key}",
         }
 

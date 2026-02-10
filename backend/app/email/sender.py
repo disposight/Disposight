@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 
 import resend
 import structlog
+from sqlalchemy import func as sa_func
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,6 +12,79 @@ from app.models import Alert, AlertHistory, Company, Signal, User, Watchlist
 logger = structlog.get_logger()
 
 resend.api_key = settings.resend_api_key
+
+RATE_CAP_PER_DAY = 20
+
+
+def _signal_matches_alert(signal: Signal, alert: Alert) -> bool:
+    """Check if a signal matches an alert's filter criteria."""
+    if alert.signal_types and signal.signal_type not in alert.signal_types:
+        return False
+    if signal.confidence_score < alert.min_confidence_score:
+        return False
+    if signal.severity_score < alert.min_severity_score:
+        return False
+    if alert.states and signal.location_state and signal.location_state not in alert.states:
+        return False
+    if alert.company_ids and signal.company_id not in alert.company_ids:
+        return False
+    return True
+
+
+async def _is_rate_capped(db: AsyncSession, user_id) -> bool:
+    """Check if a user has exceeded the daily email rate cap."""
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+    result = await db.execute(
+        select(sa_func.count())
+        .select_from(AlertHistory)
+        .where(
+            AlertHistory.user_id == user_id,
+            AlertHistory.delivery_status == "sent",
+            AlertHistory.created_at >= cutoff,
+        )
+    )
+    count = result.scalar_one()
+    return count >= RATE_CAP_PER_DAY
+
+
+async def match_and_send_realtime_alerts(db: AsyncSession, signal: Signal) -> int:
+    """Match a signal against all active real-time alerts and send emails."""
+    result = await db.execute(
+        select(Alert).where(Alert.frequency == "realtime", Alert.is_active == True)
+    )
+    alerts = result.scalars().all()
+
+    sent = 0
+    for alert in alerts:
+        if not _signal_matches_alert(signal, alert):
+            continue
+
+        # watchlist_only: signal's company must be on the alert owner's tenant watchlist
+        if alert.watchlist_only:
+            wl_result = await db.execute(
+                select(Watchlist.id).where(
+                    Watchlist.tenant_id == alert.tenant_id,
+                    Watchlist.company_id == signal.company_id,
+                ).limit(1)
+            )
+            if not wl_result.scalar_one_or_none():
+                continue
+
+        user = await db.get(User, alert.user_id)
+        if not user:
+            continue
+
+        if await _is_rate_capped(db, user.id):
+            logger.warning("email.rate_capped", user_id=str(user.id))
+            continue
+
+        await send_signal_alert(db, signal, alert, user)
+        sent += 1
+
+    if sent:
+        logger.info("alerts.realtime_matched", signal_id=str(signal.id), sent=sent)
+
+    return sent
 
 
 async def send_signal_alert(db: AsyncSession, signal: Signal, alert: Alert, user: User):
@@ -120,10 +194,15 @@ async def send_digest(db: AsyncSession, frequency: str = "daily"):
         if not user:
             continue
 
-        subject = f"[DispoSight] {'Daily' if frequency == 'daily' else 'Weekly'} Intelligence Digest — {len(signals)} signals"
+        # Filter signals to only those matching this alert's criteria
+        matched = [s for s in signals if _signal_matches_alert(s, alert)]
+        if not matched:
+            continue
+
+        subject = f"[DispoSight] {'Daily' if frequency == 'daily' else 'Weekly'} Intelligence Digest — {len(matched)} signals"
 
         signal_rows = ""
-        for s in signals[:10]:
+        for s in matched[:10]:
             company = await db.get(Company, s.company_id)
             color = "#EF4444" if s.severity_score >= 80 else "#F97316" if s.severity_score >= 60 else "#EAB308" if s.severity_score >= 40 else "#22C55E"
             signal_rows += f"""
@@ -137,7 +216,7 @@ async def send_digest(db: AsyncSession, frequency: str = "daily"):
         html = f"""
         <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto; background: #09090B; color: #FAFAFA; padding: 24px; border-radius: 8px;">
             <h2 style="color: #10B981;">Intelligence Digest</h2>
-            <p style="color: #A1A1AA;">{len(signals)} new signals in the last {'24 hours' if frequency == 'daily' else 'week'}.</p>
+            <p style="color: #A1A1AA;">{len(matched)} new signals in the last {'24 hours' if frequency == 'daily' else 'week'}.</p>
             <table style="width: 100%; border-collapse: collapse;">
                 <tr style="color: #71717A; font-size: 12px;">
                     <th style="text-align: left; padding: 8px;">Company</th>

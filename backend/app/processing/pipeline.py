@@ -12,6 +12,7 @@ from app.processing.device_filter import estimate_devices
 from app.processing.entity_extractor import extract_entities, find_or_create_company
 from app.processing.risk_scorer import update_company_risk_score
 from app.processing.signal_classifier import classify_signal
+from app.email.sender import match_and_send_realtime_alerts
 from app.processing.signal_correlator import correlate_signal
 
 logger = structlog.get_logger()
@@ -124,6 +125,16 @@ async def process_pending_signals(db: AsyncSession) -> dict:
             # Step 7: Correlation
             await correlate_signal(db, signal)
 
+            # Step 8: Real-time email alerts
+            try:
+                await match_and_send_realtime_alerts(db, signal)
+            except Exception as alert_err:
+                logger.error(
+                    "pipeline.alert_error",
+                    signal_id=str(signal.id),
+                    error=str(alert_err),
+                )
+
             # Mark raw signal as processed
             raw.processing_status = "processed"
             companies_to_update.add(company.id)
@@ -148,7 +159,7 @@ async def process_pending_signals(db: AsyncSession) -> dict:
                 error=str(e),
             )
 
-    # Step 8: Update company risk scores
+    # Step 9: Update company risk scores
     for company_id in companies_to_update:
         await update_company_risk_score(db, company_id)
 

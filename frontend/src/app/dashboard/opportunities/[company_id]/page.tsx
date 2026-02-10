@@ -12,12 +12,15 @@ import { SignalCard } from "@/components/dashboard/signal-card";
 import { PlanGate } from "@/components/dashboard/plan-gate";
 import { getNextAction } from "@/components/dashboard/next-action";
 import { FullScoreBreakdown } from "@/components/dashboard/score-breakdown";
+import KineticDotsLoader from "@/components/ui/kinetic-dots-loader";
 
 export default function OpportunityDetailPage() {
   const params = useParams();
   const companyId = params.company_id as string;
   const [opp, setOpp] = useState<OpportunityDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [watchLoading, setWatchLoading] = useState(false);
+  const [watchError, setWatchError] = useState("");
 
   useEffect(() => {
     api
@@ -28,17 +31,30 @@ export default function OpportunityDetailPage() {
   }, [companyId]);
 
   const handleWatch = async () => {
+    setWatchLoading(true);
+    setWatchError("");
     try {
       await api.addToWatchlist(companyId);
       setOpp((prev) => (prev ? { ...prev, is_watched: true } : prev));
-    } catch {}
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to add to watchlist";
+      if (msg.includes("Already in watchlist") || msg.includes("409")) {
+        setOpp((prev) => (prev ? { ...prev, is_watched: true } : prev));
+      } else {
+        setWatchError(msg);
+      }
+    } finally {
+      setWatchLoading(false);
+    }
   };
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="h-8 w-64 rounded animate-pulse" style={{ backgroundColor: "var(--bg-surface)" }} />
-        <div className="h-48 rounded-lg animate-pulse" style={{ backgroundColor: "var(--bg-surface)" }} />
+      <div
+        className="flex items-center justify-center rounded-lg"
+        style={{ backgroundColor: "var(--bg-surface)", border: "1px solid var(--border-default)", minHeight: "300px" }}
+      >
+        <KineticDotsLoader label="Loading deal intelligence" />
       </div>
     );
   }
@@ -153,18 +169,19 @@ export default function OpportunityDetailPage() {
         </div>
 
         {/* Action buttons */}
-        <div className="flex gap-3">
+        <div className="flex items-center gap-3">
           {!opp.is_watched ? (
             <button
               onClick={handleWatch}
-              className="px-4 py-2 rounded-md text-sm font-medium transition-colors"
+              disabled={watchLoading}
+              className="px-4 py-2 rounded-md text-sm font-medium transition-colors disabled:opacity-50"
               style={{
                 backgroundColor: "var(--bg-surface)",
                 color: "var(--text-secondary)",
                 border: "1px solid var(--border-default)",
               }}
             >
-              Add to Watchlist
+              {watchLoading ? "Adding..." : "Add to Watchlist"}
             </button>
           ) : (
             <span
@@ -174,48 +191,57 @@ export default function OpportunityDetailPage() {
               Watching
             </span>
           )}
+          {watchError && (
+            <span className="text-xs" style={{ color: "var(--critical)" }}>
+              {watchError}
+            </span>
+          )}
         </div>
 
         {/* AI Deal Brief */}
-        {(opp.asset_opportunity || opp.recommended_actions) && (
-          <div
-            className="p-6 rounded-lg"
-            style={{ backgroundColor: "var(--bg-surface)", border: "1px solid var(--border-default)" }}
-          >
-            <h2 className="text-base font-semibold mb-4" style={{ color: "var(--text-primary)" }}>
-              Deal Assessment
-            </h2>
+        <div
+          className="p-6 rounded-lg"
+          style={{ backgroundColor: "var(--bg-surface)", border: "1px solid var(--border-default)" }}
+        >
+          <h2 className="text-base font-semibold mb-4" style={{ color: "var(--text-primary)" }}>
+            Deal Assessment
+          </h2>
 
-            {opp.asset_opportunity && (
-              <div className="mb-4">
-                <h3 className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "var(--text-muted)" }}>
-                  Asset Recovery Potential
-                </h3>
-                <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-                  {opp.asset_opportunity}
-                </p>
-              </div>
-            )}
+          {!opp.asset_opportunity && !opp.recommended_actions ? (
+            <KineticDotsLoader label="AI is analyzing this opportunity" />
+          ) : (
+            <>
+              {opp.asset_opportunity && (
+                <div className="mb-4">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "var(--text-muted)" }}>
+                    Asset Recovery Potential
+                  </h3>
+                  <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                    {opp.asset_opportunity}
+                  </p>
+                </div>
+              )}
 
-            {opp.recommended_actions && opp.recommended_actions.length > 0 && (
-              <div>
-                <h3 className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "var(--text-muted)" }}>
-                  Recommended Next Steps
-                </h3>
-                <ol className="space-y-2">
-                  {opp.recommended_actions.map((action, i) => (
-                    <li key={i} className="flex gap-3 text-sm" style={{ color: "var(--text-secondary)" }}>
-                      <span className="font-mono font-semibold shrink-0" style={{ color: "var(--accent)" }}>
-                        {i + 1}.
-                      </span>
-                      <span>{action}</span>
-                    </li>
-                  ))}
-                </ol>
-              </div>
-            )}
-          </div>
-        )}
+              {opp.recommended_actions && opp.recommended_actions.length > 0 && (
+                <div>
+                  <h3 className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "var(--text-muted)" }}>
+                    Recommended Next Steps
+                  </h3>
+                  <ol className="space-y-2">
+                    {opp.recommended_actions.map((action, i) => (
+                      <li key={i} className="flex gap-3 text-sm" style={{ color: "var(--text-secondary)" }}>
+                        <span className="font-mono font-semibold shrink-0" style={{ color: "var(--accent)" }}>
+                          {i + 1}.
+                        </span>
+                        <span>{action}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+            </>
+          )}
+        </div>
 
         {/* Signal Evidence */}
         <div>

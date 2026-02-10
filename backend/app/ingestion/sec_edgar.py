@@ -16,6 +16,8 @@ EDGAR_FULL_TEXT = "https://efts.sec.gov/LATEST/search-index"
 EDGAR_SUBMISSIONS = "https://data.sec.gov/submissions"
 
 # Event keywords that indicate potential asset disposition
+# Covers 8-K Items: 1.01 (agreements), 1.03 (bankruptcy), 2.01 (acquisitions/dispositions),
+# 2.05 (exit/disposal activities), 2.06 (material impairments), 5.02 (officer departures)
 EVENT_KEYWORDS = [
     "restructuring",
     "asset sale",
@@ -26,6 +28,20 @@ EVENT_KEYWORDS = [
     "merger",
     "acquisition",
     "ceasing operations",
+    # Item 2.05 — exit or disposal activities
+    "exit activities",
+    "disposal activities",
+    "restructuring charges",
+    "severance",
+    "lease termination",
+    "site closure",
+    "office consolidation",
+    # Item 2.06 — material impairments
+    "impairment charge",
+    "goodwill impairment",
+    "asset impairment",
+    "write-down",
+    "long-lived asset",
 ]
 
 
@@ -34,7 +50,12 @@ class SecEdgarCollector(BaseCollector):
     source_type = "sec_edgar"
 
     def _classify_filing(self, source: dict) -> str:
-        """Classify 8-K filing event type from content keywords."""
+        """Classify 8-K filing event type from content keywords.
+
+        Covers standard 8-K items plus:
+          Item 2.05 — exit/disposal activities (facility closures, severance, lease terminations)
+          Item 2.06 — material impairments (asset write-downs preceding liquidation)
+        """
         display_names = source.get("display_names", [])
         first_name = ""
         if isinstance(display_names, list) and display_names:
@@ -55,35 +76,46 @@ class SecEdgarCollector(BaseCollector):
             return "merger"
         if any(kw in text for kw in ["asset sale", "asset disposal", "divestiture"]):
             return "liquidation"
-        if any(kw in text for kw in ["facility closure", "plant closing", "office closure"]):
+        if any(kw in text for kw in [
+            "facility closure", "plant closing", "office closure",
+            "site closure", "office consolidation", "lease termination",
+            "exit activities", "disposal activities",
+        ]):
             return "facility_shutdown"
-        if any(kw in text for kw in ["workforce reduction", "layoff", "headcount reduction"]):
+        if any(kw in text for kw in [
+            "workforce reduction", "layoff", "headcount reduction", "severance",
+        ]):
             return "layoff"
         if any(kw in text for kw in ["ceasing operations", "wind down", "dissolution"]):
             return "ceasing_operations"
+        if any(kw in text for kw in [
+            "impairment charge", "goodwill impairment", "asset impairment",
+            "material impairment", "write-down", "long-lived asset",
+        ]):
+            return "restructuring"
         return "restructuring"
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, max=16))
     async def _search_filings(self) -> list[dict]:
-        """Search recent 8-K filings via EDGAR full-text search API."""
-        url = "https://efts.sec.gov/LATEST/search-index"
-        params = {
-            "q": '"restructuring" OR "asset sale" OR "workforce reduction" OR "facility closure"',
-            "dateRange": "custom",
-            "startdt": (datetime.now().date().isoformat()),
-            "forms": "8-K",
-            "hits.hits.total": "50",
-        }
+        """Search recent 8-K filings via EDGAR full-text search API.
+
+        Covers Items 1.01, 1.03, 2.01, 2.05 (exit/disposal), 2.06 (impairments).
+        """
         headers = {"User-Agent": settings.sec_user_agent}
 
+        # Expanded query covering original terms + Item 2.05/2.06 language
+        query = (
+            '"restructuring" OR "facility closure" OR "workforce reduction"'
+            ' OR "merger" OR "asset sale" OR "ceasing operations"'
+            ' OR "exit activities" OR "disposal activities"'
+            ' OR "restructuring charges" OR "lease termination"'
+            ' OR "impairment charge" OR "asset impairment"'
+        )
+
         async with httpx.AsyncClient(timeout=30) as client:
-            # Use EDGAR full-text search
             resp = await client.get(
                 "https://efts.sec.gov/LATEST/search-index",
-                params={
-                    "q": '"restructuring" OR "facility closure" OR "workforce reduction" OR "merger" OR "asset sale" OR "ceasing operations"',
-                    "forms": "8-K",
-                },
+                params={"q": query, "forms": "8-K"},
                 headers=headers,
             )
 
@@ -146,6 +178,12 @@ class SecEdgarCollector(BaseCollector):
 
                 event_type = self._classify_filing(source)
 
+                # Include highlight text for better NLP context
+                highlight = str(source.get("_highlight", ""))[:300]
+                raw_text = f"8-K filing: {company_name}"
+                if highlight:
+                    raw_text = f"8-K filing: {company_name} — {highlight}"
+
                 signals.append({
                     "company_name": str(company_name)[:500],
                     "event_type": event_type,
@@ -153,7 +191,7 @@ class SecEdgarCollector(BaseCollector):
                     "employees_affected": None,
                     "locations": [],
                     "source_url": file_url or "https://www.sec.gov/cgi-bin/browse-edgar",
-                    "raw_text": f"8-K filing: {company_name}",
+                    "raw_text": raw_text[:800],
                 })
 
                 # Rate limit: 10 req/sec per SEC guidelines

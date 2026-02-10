@@ -48,6 +48,17 @@ async def collect_courtlistener(ctx):
         return result
 
 
+async def collect_globenewswire(ctx):
+    from app.db.session import async_session_factory
+    from app.ingestion.globenewswire import GlobeNewswireCollector
+
+    async with async_session_factory() as db:
+        collector = GlobeNewswireCollector(db)
+        result = await collector.run()
+        await db.commit()
+        return result
+
+
 async def process_raw_signals(ctx):
     from app.db.session import async_session_factory
     from app.processing.pipeline import process_pending_signals
@@ -86,6 +97,15 @@ async def send_daily_digest(ctx):
         await db.commit()
 
 
+async def send_weekly_digest(ctx):
+    from app.db.session import async_session_factory
+    from app.email.sender import send_digest
+
+    async with async_session_factory() as db:
+        await send_digest(db, frequency="weekly")
+        await db.commit()
+
+
 class WorkerSettings:
     redis_settings = RedisSettings.from_dsn(settings.redis_url)
     functions = [
@@ -93,17 +113,21 @@ class WorkerSettings:
         collect_gdelt_news,
         collect_sec_edgar,
         collect_courtlistener,
+        collect_globenewswire,
         process_raw_signals,
         enrich_companies,
         backfill_company_enrichment,
         send_daily_digest,
+        send_weekly_digest,
     ]
     cron_jobs = [
         cron(collect_warn_act, hour={0, 6, 12, 18}),
         cron(collect_gdelt_news, hour=None, minute={0, 30}),
         cron(collect_sec_edgar, hour={1, 7, 13, 19}),
         cron(collect_courtlistener, hour={3, 15}),
+        cron(collect_globenewswire, hour={2, 8, 14, 20}),  # 4x/day, offset from EDGAR
         cron(process_raw_signals, hour=None, minute={10, 40}),
         cron(enrich_companies, hour={2, 8, 14, 20}, minute=30),
         cron(send_daily_digest, hour=13, minute=0),
+        cron(send_weekly_digest, weekday=1, hour=13, minute=0),
     ]

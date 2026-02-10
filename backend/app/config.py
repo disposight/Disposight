@@ -29,7 +29,7 @@ class Settings(BaseSettings):
 
     # Resend
     resend_api_key: str = ""
-    from_email: str = "alerts@disposight.com"
+    from_email: str = "support@disposight.com"
 
     # Stripe
     stripe_secret_key: str = ""
@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     allowed_origins: str = ""
 
     # SEC EDGAR
-    sec_user_agent: str = "DispoSight contact@disposight.com"
+    sec_user_agent: str = "DispoSight support@disposight.com"
 
     # CourtListener
     courtlistener_api_key: str = ""

@@ -36,9 +36,12 @@ export default function LoginPage() {
     >
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold" style={{ color: "var(--accent)" }}>
-            DispoSight
-          </h1>
+          <Link href="/" className="inline-block hover:opacity-80 transition-opacity">
+            <img src="/logo.png" alt="DispoSight" className="h-16 mx-auto mb-3" />
+            <h1 className="text-2xl font-bold" style={{ color: "var(--accent)" }}>
+              DispoSight
+            </h1>
+          </Link>
           <p className="text-sm mt-2" style={{ color: "var(--text-muted)" }}>
             Sign in to your account
           </p>

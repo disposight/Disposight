@@ -226,7 +226,9 @@ export interface AlertCreate {
   min_confidence_score?: number;
   min_severity_score?: number;
   states?: string[];
+  company_ids?: string[];
   watchlist_only?: boolean;
+  delivery_method?: string;
   frequency?: string;
 }
 

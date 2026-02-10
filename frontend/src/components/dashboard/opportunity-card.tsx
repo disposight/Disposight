@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { Opportunity } from "@/lib/api";
+import { Tooltip } from "@/components/tooltip";
 import { DealScoreBadge } from "./deal-score-badge";
 import { DispositionBadge } from "./disposition-badge";
 import { RevenueDisplay } from "./revenue-display";
@@ -23,6 +24,22 @@ const categoryLabels: Record<string, string> = {
   liquidation: "LIQUIDATION",
   ceasing_operations: "CEASING OPS",
   restructuring: "RESTRUCTURE",
+};
+
+const categoryTips: Record<string, string> = {
+  layoff: "Mass layoff — often precedes equipment surplus",
+  shutdown: "Facility shutdown — high likelihood of surplus assets",
+  bankruptcy_ch7: "Chapter 7 — company liquidating all assets",
+  bankruptcy_ch11: "Chapter 11 — reorganizing, may sell non-essential assets",
+  merger: "Merger — duplicate equipment from combined companies",
+  acquisition: "Acquisition — buyer consolidates, freeing redundant equipment",
+  office_closure: "Office closing — IT gear available",
+  plant_closing: "Plant closing — large-scale equipment decommissioned",
+  facility_shutdown: "Facility shutdown — large asset disposition expected",
+  relocation: "Relocation — old equipment often not transferred",
+  liquidation: "Full liquidation — all assets being sold off",
+  ceasing_operations: "Ceasing operations — all assets must go",
+  restructuring: "Restructuring — divisions closing, assets redistributed",
 };
 
 interface OpportunityCardProps {
@@ -146,16 +163,17 @@ export function OpportunityCard({
               <div className="flex items-center gap-2">
                 <div className="flex gap-1">
                   {opp.signal_types.slice(0, 3).map((t) => (
-                    <span
-                      key={t}
-                      className="px-1.5 py-0.5 rounded text-[10px] font-medium"
-                      style={{
-                        backgroundColor: "var(--bg-elevated)",
-                        color: "var(--text-secondary)",
-                      }}
-                    >
-                      {categoryLabels[t] || t.toUpperCase()}
-                    </span>
+                    <Tooltip key={t} text={categoryTips[t] || t} position="top">
+                      <span
+                        className="px-1.5 py-0.5 rounded text-[10px] font-medium cursor-help"
+                        style={{
+                          backgroundColor: "var(--bg-elevated)",
+                          color: "var(--text-secondary)",
+                        }}
+                      >
+                        {categoryLabels[t] || t.toUpperCase()}
+                      </span>
+                    </Tooltip>
                   ))}
                 </div>
                 <SourceBadges sources={opp.source_names} />

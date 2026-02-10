@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { useNewSignals } from "@/lib/use-new-signals";
+import { createClient } from "@/lib/supabase";
 
 const navItems = [
   { label: "Pipeline", items: [
@@ -24,18 +25,27 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
   const { newCount, dismiss } = useNewSignals();
 
+  const handleSignOut = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+  };
+
   return (
     <aside
+      role="navigation"
+      aria-label="Main navigation"
       className={`fixed left-0 top-0 h-full border-r transition-all duration-200 flex flex-col ${
         collapsed ? "w-16" : "w-60"
       }`}
       style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-default)" }}
     >
       <div className="p-4 flex items-center gap-2">
-        <span className="text-lg font-bold" style={{ color: "var(--accent)" }}>D</span>
+        <img src="/logo.png" alt="DispoSight" className="h-7" />
         {!collapsed && (
           <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
             DispoSight
@@ -74,12 +84,13 @@ export function Sidebar() {
                     }}
                     title={collapsed ? item.label : undefined}
                   >
-                    <span className="text-base relative">
+                    <span className="text-base relative" aria-hidden="true">
                       {item.icon}
                       {showBadge && collapsed && (
                         <span
                           className="absolute -top-1 -right-1 w-2 h-2 rounded-full"
                           style={{ backgroundColor: "var(--accent)" }}
+                          aria-label={`${newCount} new signals`}
                         />
                       )}
                     </span>
@@ -93,6 +104,9 @@ export function Sidebar() {
                               backgroundColor: "var(--accent)",
                               color: "#fff",
                             }}
+                            role="status"
+                            aria-live="polite"
+                            aria-label={`${newCount} new signals`}
                           >
                             {newCount > 99 ? "99+" : newCount}
                           </span>
@@ -107,13 +121,30 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <button
-        onClick={() => setCollapsed(!collapsed)}
-        className="p-4 text-xs transition-colors"
-        style={{ color: "var(--text-muted)" }}
-      >
-        {collapsed ? "→" : "← Collapse"}
-      </button>
+      <div className="border-t px-2 py-3 space-y-1" style={{ borderColor: "var(--border-default)" }}>
+        <button
+          onClick={handleSignOut}
+          aria-label="Sign out"
+          className={`flex items-center gap-3 w-full px-3 py-2 rounded-md text-sm transition-colors hover:opacity-80 ${
+            collapsed ? "justify-center" : ""
+          }`}
+          style={{ color: "var(--text-muted)" }}
+          title={collapsed ? "Sign Out" : undefined}
+        >
+          <span className="text-base" aria-hidden="true">↪</span>
+          {!collapsed && <span>Sign Out</span>}
+        </button>
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className={`flex items-center gap-3 w-full px-3 py-2 rounded-md text-xs transition-colors ${
+            collapsed ? "justify-center" : ""
+          }`}
+          style={{ color: "var(--text-muted)" }}
+        >
+          <span aria-hidden="true">{collapsed ? "→" : "← Collapse"}</span>
+        </button>
+      </div>
     </aside>
   );
 }

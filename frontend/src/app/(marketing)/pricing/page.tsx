@@ -51,8 +51,9 @@ export default function PricingPage() {
     <div className="min-h-screen px-4 py-20" style={{ backgroundColor: "var(--bg-base)" }}>
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-16">
-          <Link href="/" className="text-lg font-bold mb-8 inline-block" style={{ color: "var(--accent)" }}>
-            DispoSight
+          <Link href="/" className="inline-flex items-center gap-2 mb-8">
+            <img src="/logo.png" alt="DispoSight" className="h-8" />
+            <span className="text-lg font-bold" style={{ color: "var(--accent)" }}>DispoSight</span>
           </Link>
           <h1 className="text-4xl font-bold mb-4" style={{ color: "var(--text-primary)" }}>
             Simple, transparent pricing

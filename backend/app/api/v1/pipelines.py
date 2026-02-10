@@ -29,6 +29,7 @@ class PipelineRunResponse(BaseModel):
     gdelt: dict | None = None
     sec_edgar: dict | None = None
     courtlistener: dict | None = None
+    globenewswire: dict | None = None
     processing: dict | None = None
 
 
@@ -72,13 +73,14 @@ async def trigger_pipeline_run(request: Request, user_id: AdminUserId, db: DbSes
     """
     from app.ingestion.courtlistener import CourtListenerCollector
     from app.ingestion.gdelt_news import GdeltCollector
+    from app.ingestion.globenewswire import GlobeNewswireCollector
     from app.ingestion.sec_edgar import SecEdgarCollector
     from app.ingestion.warn_act import WarnActCollector
     from app.processing.pipeline import process_pending_signals
 
     results = PipelineRunResponse()
 
-    # Run all 4 collectors (each needs its own session for isolation)
+    # Run all 5 collectors (each needs its own session for isolation)
     from app.db.session import async_session_factory
 
     async def run_collector(collector_cls, name):
@@ -91,17 +93,19 @@ async def trigger_pipeline_run(request: Request, user_id: AdminUserId, db: DbSes
         except Exception as e:
             return {"error": str(e)}
 
-    warn, gdelt, edgar, court = await asyncio.gather(
+    warn, gdelt, edgar, court, gnw = await asyncio.gather(
         run_collector(WarnActCollector, "warn_act"),
         run_collector(GdeltCollector, "gdelt"),
         run_collector(SecEdgarCollector, "sec_edgar"),
         run_collector(CourtListenerCollector, "courtlistener"),
+        run_collector(GlobeNewswireCollector, "globenewswire"),
     )
 
     results.warn_act = warn
     results.gdelt = gdelt
     results.sec_edgar = edgar
     results.courtlistener = court
+    results.globenewswire = gnw
 
     # Process all new raw signals
     total_processed = 0
