@@ -2,6 +2,18 @@ import { createClient } from "./supabase";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+export class PlanLimitError extends Error {
+  feature: string;
+  currentPlan: string;
+
+  constructor(feature: string, currentPlan: string, message: string) {
+    super(message);
+    this.name = "PlanLimitError";
+    this.feature = feature;
+    this.currentPlan = currentPlan;
+  }
+}
+
 async function getAuthHeaders(): Promise<Record<string, string>> {
   const supabase = createClient();
   const {
@@ -25,7 +37,14 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(error.detail || "API error");
+    if (res.status === 402 && error.detail?.error === "plan_limit_exceeded") {
+      throw new PlanLimitError(
+        error.detail.feature,
+        error.detail.current_plan,
+        error.detail.message,
+      );
+    }
+    throw new Error(error.detail?.message || error.detail || "API error");
   }
 
   if (res.status === 204) return undefined as T;
@@ -63,6 +82,24 @@ export const api = {
     apiFetch<OpportunityDetail>(`/opportunities/${companyId}`),
   getCommandCenterStats: () =>
     apiFetch<CommandCenterStats>("/opportunities/stats"),
+  exportOpportunitiesCSV: async () => {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${API_URL}/api/v1/opportunities/export/csv`, { headers });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ detail: res.statusText }));
+      if (res.status === 402 && error.detail?.error === "plan_limit_exceeded") {
+        throw new PlanLimitError(error.detail.feature, error.detail.current_plan, error.detail.message);
+      }
+      throw new Error(error.detail?.message || error.detail || "Export failed");
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "opportunities.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  },
 
   // Revenue Settings
   getRevenueSettings: () => apiFetch<RevenueSettings>("/settings/revenue"),
@@ -102,6 +139,11 @@ export const api = {
   // Billing
   createCheckout: (priceId?: string) =>
     apiFetch<{ client_secret: string }>("/billing/checkout", {
+      method: "POST",
+      body: JSON.stringify({ price_id: priceId }),
+    }),
+  subscribe: (priceId?: string) =>
+    apiFetch<{ client_secret: string; subscription_id: string }>("/billing/subscribe", {
       method: "POST",
       body: JSON.stringify({ price_id: priceId }),
     }),
@@ -252,6 +294,17 @@ export interface PipelineHealthItem {
   error_count: number;
 }
 
+export interface PlanLimitsInfo {
+  max_watchlist_companies: number;
+  max_active_alerts: number;
+  max_signal_analyses_per_day: number | null;
+  allowed_alert_frequencies: string[];
+  signal_history_days: number | null;
+  score_breakdown_mode: string;
+  csv_export: boolean;
+  team_pipeline: boolean;
+}
+
 export interface UserProfile {
   id: string;
   email: string;
@@ -261,6 +314,7 @@ export interface UserProfile {
   tenant_name: string | null;
   plan: string | null;
   trial_ends_at: string | null;
+  plan_limits?: PlanLimitsInfo;
 }
 
 export interface AuthCallbackResponse {

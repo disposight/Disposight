@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api, type WatchlistItem } from "@/lib/api";
 import { PlanGate } from "@/components/dashboard/plan-gate";
-import { DispositionBadge } from "@/components/dashboard/disposition-badge";
+import { UpgradePrompt } from "@/components/dashboard/upgrade-prompt";
+import { usePlan } from "@/contexts/plan-context";
 
 function scoreColor(score: number): string {
   if (score >= 80) return "var(--critical)";
@@ -28,6 +29,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function WatchlistPage() {
+  const { planLimits } = usePlan();
   const [items, setItems] = useState<WatchlistItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -61,9 +63,16 @@ export default function WatchlistPage() {
   return (
     <PlanGate>
       <div className="space-y-6">
-        <h1 className="text-2xl font-semibold" style={{ color: "var(--text-primary)" }}>
-          Watchlist
-        </h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-semibold" style={{ color: "var(--text-primary)" }}>
+            Watchlist
+          </h1>
+          {planLimits && (
+            <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: "var(--bg-elevated)", color: "var(--text-muted)" }}>
+              {items.length} / {planLimits.max_watchlist_companies}
+            </span>
+          )}
+        </div>
 
         {loading ? (
           <div className="space-y-3">

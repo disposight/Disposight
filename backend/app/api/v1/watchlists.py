@@ -2,10 +2,11 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Request
-from sqlalchemy import select
+from sqlalchemy import func, select
 
-from app.api.v1.deps import CurrentUserId, DbSession, TenantId
+from app.api.v1.deps import CurrentUserId, DbSession, TenantId, TenantPlan
 from app.models import Company, Watchlist
+from app.plan_limits import raise_plan_limit
 from app.rate_limit import limiter
 from app.schemas.watchlist import WatchlistAdd, WatchlistOut, WatchlistStatusUpdate
 
@@ -42,8 +43,10 @@ async def list_watchlist(request: Request, db: DbSession, tenant_id: TenantId):
 @router.post("", response_model=WatchlistOut, status_code=201)
 @limiter.limit("20/minute")
 async def add_to_watchlist(
-    request: Request, body: WatchlistAdd, db: DbSession, tenant_id: TenantId, user_id: CurrentUserId
+    request: Request, body: WatchlistAdd, db: DbSession, tp: TenantPlan, user_id: CurrentUserId
 ):
+    tenant_id = tp.tenant_id
+
     company = await db.get(Company, body.company_id)
     if not company:
         raise HTTPException(status_code=404, detail="Company not found")
@@ -55,6 +58,18 @@ async def add_to_watchlist(
     )
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Already in watchlist")
+
+    # Enforce watchlist cap
+    count_result = await db.execute(
+        select(func.count(Watchlist.id)).where(Watchlist.tenant_id == tenant_id)
+    )
+    current_count = count_result.scalar() or 0
+    if current_count >= tp.limits.max_watchlist_companies:
+        raise_plan_limit(
+            "watchlist_companies",
+            tp.plan,
+            f"Watchlist limit reached ({current_count}/{tp.limits.max_watchlist_companies}). Upgrade for more.",
+        )
 
     item = Watchlist(
         tenant_id=tenant_id,
@@ -168,7 +183,10 @@ async def my_pipeline(request: Request, db: DbSession, tenant_id: TenantId, user
 
 @router.get("/team-pipeline", response_model=list[WatchlistOut])
 @limiter.limit("60/minute")
-async def team_pipeline(request: Request, db: DbSession, tenant_id: TenantId):
+async def team_pipeline(request: Request, db: DbSession, tp: TenantPlan):
+    if not tp.limits.team_pipeline:
+        raise_plan_limit("team_pipeline", tp.plan, "Team Pipeline requires the Professional plan.")
+    tenant_id = tp.tenant_id
     result = await db.execute(
         select(Watchlist, Company.name, Company.composite_risk_score)
         .join(Company, Watchlist.company_id == Company.id)

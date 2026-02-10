@@ -3,24 +3,30 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { api, type OpportunityDetail } from "@/lib/api";
+import { api, PlanLimitError, type OpportunityDetail, type SignalAnalysis } from "@/lib/api";
 import { DealScoreBadge } from "@/components/dashboard/deal-score-badge";
 import { DispositionBadge } from "@/components/dashboard/disposition-badge";
 import { RevenueDisplay } from "@/components/dashboard/revenue-display";
 import { SourceBadges } from "@/components/dashboard/source-badges";
 import { SignalCard } from "@/components/dashboard/signal-card";
 import { PlanGate } from "@/components/dashboard/plan-gate";
+import { UpgradePrompt } from "@/components/dashboard/upgrade-prompt";
 import { getNextAction } from "@/components/dashboard/next-action";
 import { FullScoreBreakdown } from "@/components/dashboard/score-breakdown";
+import { usePlan } from "@/contexts/plan-context";
 import KineticDotsLoader from "@/components/ui/kinetic-dots-loader";
 
 export default function OpportunityDetailPage() {
   const params = useParams();
   const companyId = params.company_id as string;
+  const { isPro } = usePlan();
   const [opp, setOpp] = useState<OpportunityDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [watchLoading, setWatchLoading] = useState(false);
   const [watchError, setWatchError] = useState("");
+
+  const [analysis, setAnalysis] = useState<SignalAnalysis | null>(null);
+  const [analysisError, setAnalysisError] = useState(false);
 
   useEffect(() => {
     api
@@ -30,6 +36,23 @@ export default function OpportunityDetailPage() {
       .finally(() => setLoading(false));
   }, [companyId]);
 
+  // Auto-trigger signal analysis when deal assessment is empty
+  useEffect(() => {
+    if (!opp || opp.asset_opportunity || opp.recommended_actions?.length) return;
+    if (analysis || analysisError) return;
+
+    // Pick highest-severity signal to analyze
+    const bestSignal = opp.signals.length
+      ? [...opp.signals].sort((a, b) => b.severity_score - a.severity_score)[0]
+      : null;
+    if (!bestSignal) return;
+
+    api
+      .getSignalAnalysis(bestSignal.id)
+      .then((result) => setAnalysis(result))
+      .catch(() => setAnalysisError(true));
+  }, [opp, analysis, analysisError]);
+
   const handleWatch = async () => {
     setWatchLoading(true);
     setWatchError("");
@@ -37,11 +60,15 @@ export default function OpportunityDetailPage() {
       await api.addToWatchlist(companyId);
       setOpp((prev) => (prev ? { ...prev, is_watched: true } : prev));
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to add to watchlist";
-      if (msg.includes("Already in watchlist") || msg.includes("409")) {
-        setOpp((prev) => (prev ? { ...prev, is_watched: true } : prev));
+      if (err instanceof PlanLimitError) {
+        setWatchError(err.message);
       } else {
-        setWatchError(msg);
+        const msg = err instanceof Error ? err.message : "Failed to add to watchlist";
+        if (msg.includes("Already in watchlist") || msg.includes("409")) {
+          setOpp((prev) => (prev ? { ...prev, is_watched: true } : prev));
+        } else {
+          setWatchError(msg);
+        }
       }
     } finally {
       setWatchLoading(false);
@@ -140,6 +167,9 @@ export default function OpportunityDetailPage() {
         {opp.score_breakdown && (
           <FullScoreBreakdown breakdown={opp.score_breakdown} />
         )}
+        {!isPro && opp.score_breakdown && (
+          <UpgradePrompt message="Upgrade to Professional for the full 8-factor score breakdown." />
+        )}
 
         {/* Stats grid */}
         <div className="grid grid-cols-4 gap-4">
@@ -192,9 +222,13 @@ export default function OpportunityDetailPage() {
             </span>
           )}
           {watchError && (
-            <span className="text-xs" style={{ color: "var(--critical)" }}>
-              {watchError}
-            </span>
+            watchError.includes("Upgrade") || watchError.includes("limit") ? (
+              <UpgradePrompt message={watchError} />
+            ) : (
+              <span className="text-xs" style={{ color: "var(--critical)" }}>
+                {watchError}
+              </span>
+            )
           )}
         </div>
 
@@ -207,40 +241,56 @@ export default function OpportunityDetailPage() {
             Deal Assessment
           </h2>
 
-          {!opp.asset_opportunity && !opp.recommended_actions ? (
-            <KineticDotsLoader label="AI is analyzing this opportunity" />
-          ) : (
-            <>
-              {opp.asset_opportunity && (
-                <div className="mb-4">
-                  <h3 className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "var(--text-muted)" }}>
-                    Asset Recovery Potential
-                  </h3>
-                  <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-                    {opp.asset_opportunity}
-                  </p>
-                </div>
-              )}
+          {(() => {
+            const assetOpp = opp.asset_opportunity || analysis?.asset_opportunity;
+            const actions = opp.recommended_actions?.length ? opp.recommended_actions : analysis?.recommended_actions;
+            const hasContent = assetOpp || (actions && actions.length > 0);
 
-              {opp.recommended_actions && opp.recommended_actions.length > 0 && (
-                <div>
-                  <h3 className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "var(--text-muted)" }}>
-                    Recommended Next Steps
-                  </h3>
-                  <ol className="space-y-2">
-                    {opp.recommended_actions.map((action, i) => (
-                      <li key={i} className="flex gap-3 text-sm" style={{ color: "var(--text-secondary)" }}>
-                        <span className="font-mono font-semibold shrink-0" style={{ color: "var(--accent)" }}>
-                          {i + 1}.
-                        </span>
-                        <span>{action}</span>
-                      </li>
-                    ))}
-                  </ol>
-                </div>
-              )}
-            </>
-          )}
+            if (!hasContent && analysisError) {
+              return (
+                <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+                  Unable to generate analysis at this time.
+                </p>
+              );
+            }
+
+            if (!hasContent) {
+              return <KineticDotsLoader label="AI is analyzing this opportunity" />;
+            }
+
+            return (
+              <>
+                {assetOpp && (
+                  <div className="mb-4">
+                    <h3 className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "var(--text-muted)" }}>
+                      Asset Recovery Potential
+                    </h3>
+                    <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                      {assetOpp}
+                    </p>
+                  </div>
+                )}
+
+                {actions && actions.length > 0 && (
+                  <div>
+                    <h3 className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "var(--text-muted)" }}>
+                      Recommended Next Steps
+                    </h3>
+                    <ol className="space-y-2">
+                      {actions.map((action, i) => (
+                        <li key={i} className="flex gap-3 text-sm" style={{ color: "var(--text-secondary)" }}>
+                          <span className="font-mono font-semibold shrink-0" style={{ color: "var(--accent)" }}>
+                            {i + 1}.
+                          </span>
+                          <span>{action}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </div>
 
         {/* Signal Evidence */}

@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api, type OpportunityListResponse } from "@/lib/api";
+import { api, PlanLimitError, type OpportunityListResponse } from "@/lib/api";
 import { OpportunityCard } from "@/components/dashboard/opportunity-card";
 import { PricePerDeviceSelector } from "@/components/dashboard/price-per-device-selector";
 import { PlanGate } from "@/components/dashboard/plan-gate";
+import { UpgradePrompt } from "@/components/dashboard/upgrade-prompt";
+import { usePlan } from "@/contexts/plan-context";
 
 const SIGNAL_TYPES = [
   "All", "layoff", "bankruptcy_ch7", "bankruptcy_ch11", "merger",
@@ -25,11 +27,13 @@ function formatValue(val: number) {
 }
 
 export default function DealsPage() {
+  const { isPro } = usePlan();
   const [data, setData] = useState<OpportunityListResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("All");
   const [sortBy, setSortBy] = useState("deal_score");
   const [page, setPage] = useState(1);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -47,7 +51,10 @@ export default function DealsPage() {
       .finally(() => setLoading(false));
   }, [filter, sortBy, page]);
 
+  const [watchLimitMsg, setWatchLimitMsg] = useState<string | null>(null);
+
   const handleWatch = async (companyId: string) => {
+    setWatchLimitMsg(null);
     try {
       await api.addToWatchlist(companyId);
       setData((prev) =>
@@ -60,7 +67,11 @@ export default function DealsPage() {
             }
           : prev
       );
-    } catch {}
+    } catch (err) {
+      if (err instanceof PlanLimitError) {
+        setWatchLimitMsg(err.message);
+      }
+    }
   };
 
   return (
@@ -78,7 +89,26 @@ export default function DealsPage() {
               </p>
             )}
           </div>
-          <PricePerDeviceSelector />
+          <div className="flex items-center gap-3">
+            {isPro && (
+              <button
+                onClick={async () => {
+                  setExporting(true);
+                  try { await api.exportOpportunitiesCSV(); } catch {} finally { setExporting(false); }
+                }}
+                disabled={exporting}
+                className="px-3 py-1.5 rounded-md text-xs font-medium transition-colors disabled:opacity-50"
+                style={{
+                  backgroundColor: "var(--bg-surface)",
+                  color: "var(--text-secondary)",
+                  border: "1px solid var(--border-default)",
+                }}
+              >
+                {exporting ? "Exporting..." : "Export CSV"}
+              </button>
+            )}
+            <PricePerDeviceSelector />
+          </div>
         </div>
 
         {/* Filter + Sort bar */}
@@ -116,6 +146,8 @@ export default function DealsPage() {
             ))}
           </select>
         </div>
+
+        {watchLimitMsg && <UpgradePrompt message={watchLimitMsg} />}
 
         {/* Opportunity list */}
         {loading ? (

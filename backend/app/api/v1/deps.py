@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Annotated
 from uuid import UUID
 
@@ -8,8 +9,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.db.session import get_db
+from app.plan_limits import PlanLimits, get_plan_limits
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
+
+
+@dataclass
+class TenantInfo:
+    """Tenant ID + resolved plan limits, used by gated endpoints."""
+    tenant_id: UUID
+    plan: str
+    limits: PlanLimits
 
 # Cache the JWKS client (fetches public keys from Supabase)
 _jwks_client: PyJWKClient | None = None
@@ -85,6 +95,24 @@ async def require_admin(
     return user_id
 
 
+async def get_tenant_info(
+    user_id: UUID = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+) -> TenantInfo:
+    """Load user + tenant, return TenantInfo with resolved plan limits."""
+    from app.models import Tenant, User
+
+    user = await db.get(User, user_id)
+    if not user or not user.tenant_id:
+        raise HTTPException(status_code=403, detail="No tenant associated with user")
+    tenant = await db.get(Tenant, user.tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=403, detail="Tenant not found")
+    plan = tenant.plan or "free"
+    return TenantInfo(tenant_id=tenant.id, plan=plan, limits=get_plan_limits(plan))
+
+
 CurrentUserId = Annotated[UUID, Depends(get_current_user_id)]
 TenantId = Annotated[UUID, Depends(get_tenant_id)]
+TenantPlan = Annotated[TenantInfo, Depends(get_tenant_info)]
 AdminUserId = Annotated[UUID, Depends(require_admin)]

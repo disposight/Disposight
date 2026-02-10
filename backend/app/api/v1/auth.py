@@ -8,6 +8,7 @@ from sqlalchemy import select
 
 from app.api.v1.deps import CurrentUserId, DbSession
 from app.models import Tenant, User
+from app.plan_limits import get_plan_limits
 from app.rate_limit import limiter
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -84,6 +85,9 @@ async def get_me(request: Request, user_id: CurrentUserId, db: DbSession):
             tenant.trial_ends_at = None
             await db.flush()
 
+    plan = tenant.plan if tenant else "free"
+    limits = get_plan_limits(plan)
+
     return {
         "id": str(user.id),
         "email": user.email,
@@ -91,6 +95,16 @@ async def get_me(request: Request, user_id: CurrentUserId, db: DbSession):
         "role": user.role,
         "tenant_id": str(user.tenant_id),
         "tenant_name": tenant.name if tenant else None,
-        "plan": tenant.plan if tenant else None,
+        "plan": plan,
         "trial_ends_at": tenant.trial_ends_at.isoformat() if tenant and tenant.trial_ends_at else None,
+        "plan_limits": {
+            "max_watchlist_companies": limits.max_watchlist_companies,
+            "max_active_alerts": limits.max_active_alerts,
+            "max_signal_analyses_per_day": limits.max_signal_analyses_per_day,
+            "allowed_alert_frequencies": limits.allowed_alert_frequencies,
+            "signal_history_days": limits.signal_history_days,
+            "score_breakdown_mode": limits.score_breakdown_mode,
+            "csv_export": limits.csv_export,
+            "team_pipeline": limits.team_pipeline,
+        },
     }

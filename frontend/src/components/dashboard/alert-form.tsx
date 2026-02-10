@@ -33,13 +33,17 @@ interface AlertFormProps {
   onSubmit: (data: AlertCreate) => void;
   onCancel: () => void;
   saving: boolean;
+  allowedFrequencies?: string[];
 }
 
-export function AlertForm({ alert, onSubmit, onCancel, saving }: AlertFormProps) {
+export function AlertForm({ alert, onSubmit, onCancel, saving, allowedFrequencies }: AlertFormProps) {
   const [signalTypes, setSignalTypes] = useState<Set<string>>(
     new Set(alert?.signal_types ?? [])
   );
-  const [frequency, setFrequency] = useState(alert?.frequency ?? "realtime");
+  const defaultFreq = allowedFrequencies?.includes(alert?.frequency ?? "realtime")
+    ? (alert?.frequency ?? "realtime")
+    : (allowedFrequencies?.[0] ?? "realtime");
+  const [frequency, setFrequency] = useState(defaultFreq);
   const [minConfidence, setMinConfidence] = useState(alert?.min_confidence_score ?? 50);
   const [minSeverity, setMinSeverity] = useState(alert?.min_severity_score ?? 0);
   const [statesInput, setStatesInput] = useState(alert?.states?.join(", ") ?? "");
@@ -131,20 +135,25 @@ export function AlertForm({ alert, onSubmit, onCancel, saving }: AlertFormProps)
           Frequency
         </label>
         <div className="flex gap-2">
-          {FREQUENCIES.map((f) => (
-            <button
-              key={f.value}
-              type="button"
-              onClick={() => setFrequency(f.value)}
-              className="px-3 py-1.5 rounded-full text-xs font-medium transition-colors"
-              style={{
-                backgroundColor: frequency === f.value ? "var(--accent)" : "var(--bg-elevated)",
-                color: frequency === f.value ? "#fff" : "var(--text-secondary)",
-              }}
-            >
-              {f.label}
-            </button>
-          ))}
+          {FREQUENCIES.map((f) => {
+            const allowed = !allowedFrequencies || allowedFrequencies.includes(f.value);
+            return (
+              <button
+                key={f.value}
+                type="button"
+                onClick={() => allowed && setFrequency(f.value)}
+                disabled={!allowed}
+                className="px-3 py-1.5 rounded-full text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{
+                  backgroundColor: frequency === f.value ? "var(--accent)" : "var(--bg-elevated)",
+                  color: frequency === f.value ? "#fff" : "var(--text-secondary)",
+                }}
+                title={!allowed ? "Upgrade to Professional for this frequency" : undefined}
+              >
+                {f.label}{!allowed ? " (Pro)" : ""}
+              </button>
+            );
+          })}
         </div>
       </div>
 

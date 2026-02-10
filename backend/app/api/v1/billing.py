@@ -17,8 +17,21 @@ def _price_to_plan(price_id: str) -> str:
     mapping = {
         settings.stripe_starter_price_id: "starter",
         settings.stripe_pro_price_id: "pro",
+        settings.stripe_starter_yearly_price_id: "starter",
+        settings.stripe_pro_yearly_price_id: "pro",
     }
     return mapping.get(price_id, "starter")
+
+
+def _resolve_price_id(price_id: str) -> str:
+    """Resolve a friendly price key to a Stripe price ID."""
+    friendly_map = {
+        "starter": settings.stripe_starter_price_id,
+        "pro": settings.stripe_pro_price_id,
+        "starter_yearly": settings.stripe_starter_yearly_price_id,
+        "pro_yearly": settings.stripe_pro_yearly_price_id,
+    }
+    return friendly_map.get(price_id, price_id) or settings.stripe_starter_price_id
 
 
 class CheckoutRequest(BaseModel):
@@ -46,12 +59,44 @@ async def create_checkout(request: Request, body: CheckoutRequest, db: DbSession
     session = stripe.checkout.Session.create(
         customer=tenant.stripe_customer_id,
         mode="subscription",
-        line_items=[{"price": body.price_id or settings.stripe_starter_price_id, "quantity": 1}],
+        line_items=[{"price": _resolve_price_id(body.price_id) if body.price_id else settings.stripe_starter_price_id, "quantity": 1}],
         ui_mode="embedded",
         return_url=f"{settings.frontend_url}/dashboard/settings?billing=success",
     )
 
     return {"client_secret": session.client_secret}
+
+
+@router.post("/subscribe")
+@limiter.limit("5/minute")
+async def create_subscription(request: Request, body: CheckoutRequest, db: DbSession, tenant_id: TenantId):
+    if not settings.stripe_secret_key:
+        raise HTTPException(status_code=503, detail="Billing not configured")
+
+    tenant = await db.get(Tenant, tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+
+    # Get or create Stripe customer
+    if not tenant.stripe_customer_id:
+        customer = stripe.Customer.create(
+            metadata={"tenant_id": str(tenant_id)},
+        )
+        tenant.stripe_customer_id = customer.id
+        await db.flush()
+
+    subscription = stripe.Subscription.create(
+        customer=tenant.stripe_customer_id,
+        items=[{"price": _resolve_price_id(body.price_id) if body.price_id else settings.stripe_starter_price_id}],
+        payment_behavior="default_incomplete",
+        payment_settings={"save_default_payment_method": "on_subscription"},
+        expand=["latest_invoice.payment_intent"],
+    )
+
+    return {
+        "client_secret": subscription.latest_invoice.payment_intent.client_secret,
+        "subscription_id": subscription.id,
+    }
 
 
 @router.get("/portal")

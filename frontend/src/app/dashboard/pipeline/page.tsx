@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { api, type WatchlistItem } from "@/lib/api";
+import { api, PlanLimitError, type WatchlistItem } from "@/lib/api";
 import { PlanGate } from "@/components/dashboard/plan-gate";
+import { UpgradePrompt } from "@/components/dashboard/upgrade-prompt";
 import { usePlan } from "@/contexts/plan-context";
 import { TeamLeaderboard } from "@/components/dashboard/team-leaderboard";
 
@@ -29,18 +30,27 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function PipelinePage() {
-  const { user } = usePlan();
+  const { user, isPro } = usePlan();
   const isManager = user?.role === "admin" || user?.role === "manager";
-  const [view, setView] = useState<"mine" | "team">(isManager ? "team" : "mine");
+  const canViewTeam = isManager && isPro;
+  const [view, setView] = useState<"mine" | "team">(canViewTeam ? "team" : "mine");
   const [items, setItems] = useState<WatchlistItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [teamGateMsg, setTeamGateMsg] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
+    setTeamGateMsg(null);
     const fetcher = view === "team" ? api.getTeamPipeline() : api.getMyPipeline();
     fetcher
       .then(setItems)
-      .catch(() => setItems([]))
+      .catch((err) => {
+        if (err instanceof PlanLimitError) {
+          setTeamGateMsg(err.message);
+          setView("mine");
+        }
+        setItems([]);
+      })
       .finally(() => setLoading(false));
   }, [view]);
 
@@ -86,18 +96,21 @@ export default function PipelinePage() {
                 My Leads
               </button>
               <button
-                onClick={() => setView("team")}
+                onClick={() => isPro ? setView("team") : setTeamGateMsg("Team Pipeline requires the Professional plan.")}
                 className="px-3 py-1.5 text-xs font-medium"
                 style={{
                   backgroundColor: view === "team" ? "var(--accent-muted)" : "var(--bg-surface)",
                   color: view === "team" ? "var(--accent-text)" : "var(--text-secondary)",
+                  opacity: isPro ? 1 : 0.6,
                 }}
               >
-                Team View
+                Team View{!isPro ? " (Pro)" : ""}
               </button>
             </div>
           )}
         </div>
+
+        {teamGateMsg && <UpgradePrompt message={teamGateMsg} />}
 
         {/* Team leaderboard (manager only) */}
         {view === "team" && isManager && items.length > 0 && (

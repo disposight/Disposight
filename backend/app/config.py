@@ -36,6 +36,8 @@ class Settings(BaseSettings):
     stripe_webhook_secret: str = ""
     stripe_starter_price_id: str = ""
     stripe_pro_price_id: str = ""
+    stripe_starter_yearly_price_id: str = ""
+    stripe_pro_yearly_price_id: str = ""
     stripe_enterprise_price_id: str = ""
 
     # Sentry

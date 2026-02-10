@@ -1,11 +1,15 @@
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
+import redis.asyncio as aioredis
 from fastapi import APIRouter, HTTPException, Query, Request
 from sqlalchemy import func, select
 from sqlalchemy.orm.attributes import flag_modified
 
-from app.api.v1.deps import DbSession
+from app.api.v1.deps import DbSession, TenantPlan
+from app.config import settings
 from app.models import Company, RawSignal, Signal
+from app.plan_limits import raise_plan_limit
 from app.processing.signal_analyzer import generate_signal_analysis
 from app.rate_limit import limiter
 from app.schemas.signal import SignalAnalysisOut, SignalListResponse, SignalOut
@@ -18,6 +22,7 @@ router = APIRouter(prefix="/signals", tags=["signals"])
 async def list_signals(
     request: Request,
     db: DbSession,
+    tp: TenantPlan,
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
     signal_type: str | None = None,
@@ -32,6 +37,12 @@ async def list_signals(
         Company, Signal.company_id == Company.id
     )
     count_query = select(func.count(Signal.id))
+
+    # Apply signal history filter based on plan
+    if tp.limits.signal_history_days is not None:
+        cutoff = datetime.now(timezone.utc) - timedelta(days=tp.limits.signal_history_days)
+        query = query.where(Signal.created_at >= cutoff)
+        count_query = count_query.where(Signal.created_at >= cutoff)
 
     if signal_type:
         query = query.where(Signal.signal_type == signal_type)
@@ -99,8 +110,31 @@ async def get_signal_analysis(
     request: Request,
     signal_id: UUID,
     db: DbSession,
+    tp: TenantPlan,
     force_refresh: bool = Query(False),
 ):
+    # Enforce daily analysis cap via Redis
+    if tp.limits.max_signal_analyses_per_day is not None:
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        redis_key = f"analysis_usage:{tp.tenant_id}:{today}"
+        try:
+            r = aioredis.from_url(settings.redis_url, decode_responses=True)
+            current = int(await r.get(redis_key) or 0)
+            if current >= tp.limits.max_signal_analyses_per_day:
+                await r.aclose()
+                raise_plan_limit(
+                    "signal_analysis",
+                    tp.plan,
+                    f"Daily AI analysis limit reached ({current}/{tp.limits.max_signal_analyses_per_day}). Resets tomorrow.",
+                )
+            await r.incr(redis_key)
+            await r.expire(redis_key, 86400)  # TTL 24h
+            await r.aclose()
+        except HTTPException:
+            raise
+        except Exception:
+            pass  # Redis down — don't block the request
+
     # Load signal
     signal = await db.get(Signal, signal_id)
     if not signal:

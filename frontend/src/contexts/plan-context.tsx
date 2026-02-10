@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { api, type UserProfile } from "@/lib/api";
+import { api, type PlanLimitsInfo, type UserProfile } from "@/lib/api";
 import { createClient } from "@/lib/supabase";
 
 interface PlanContextValue {
@@ -9,9 +9,12 @@ interface PlanContextValue {
   loading: boolean;
   isPaid: boolean;
   isTrial: boolean;
+  isStarter: boolean;
+  isPro: boolean;
   trialEndsAt: Date | null;
   daysLeft: number | null;
   user: UserProfile | null;
+  planLimits: PlanLimitsInfo | null;
 }
 
 const PlanContext = createContext<PlanContextValue>({
@@ -19,9 +22,12 @@ const PlanContext = createContext<PlanContextValue>({
   loading: true,
   isPaid: false,
   isTrial: false,
+  isStarter: false,
+  isPro: false,
   trialEndsAt: null,
   daysLeft: null,
   user: null,
+  planLimits: null,
 });
 
 export function PlanProvider({ children }: { children: ReactNode }) {
@@ -64,7 +70,10 @@ export function PlanProvider({ children }: { children: ReactNode }) {
   const plan = user?.plan ?? null;
   const isPaid = plan !== null && plan !== "free";
   const isTrial = plan === "trialing";
+  const isStarter = plan === "starter" || plan === "trialing";
+  const isPro = plan === "pro";
   const trialEndsAt = user?.trial_ends_at ? new Date(user.trial_ends_at) : null;
+  const planLimits = user?.plan_limits ?? null;
 
   let daysLeft: number | null = null;
   if (trialEndsAt) {
@@ -73,7 +82,7 @@ export function PlanProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <PlanContext.Provider value={{ plan, loading, isPaid, isTrial, trialEndsAt, daysLeft, user }}>
+    <PlanContext.Provider value={{ plan, loading, isPaid, isTrial, isStarter, isPro, trialEndsAt, daysLeft, user, planLimits }}>
       {children}
     </PlanContext.Provider>
   );

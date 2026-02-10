@@ -1,16 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api, type Alert, type AlertCreate } from "@/lib/api";
+import { api, PlanLimitError, type Alert, type AlertCreate } from "@/lib/api";
 import { PlanGate } from "@/components/dashboard/plan-gate";
 import { AlertForm } from "@/components/dashboard/alert-form";
+import { UpgradePrompt } from "@/components/dashboard/upgrade-prompt";
+import { usePlan } from "@/contexts/plan-context";
 
 export default function AlertsPage() {
+  const { planLimits } = usePlan();
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingAlertId, setEditingAlertId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [upgradeMsg, setUpgradeMsg] = useState<string | null>(null);
 
   const formOpen = showCreateForm || editingAlertId !== null;
 
@@ -34,10 +38,15 @@ export default function AlertsPage() {
 
   const handleCreate = async (data: AlertCreate) => {
     setSaving(true);
+    setUpgradeMsg(null);
     try {
       const newAlert = await api.createAlert(data);
       setAlerts((prev) => [newAlert, ...prev]);
       setShowCreateForm(false);
+    } catch (err) {
+      if (err instanceof PlanLimitError) {
+        setUpgradeMsg(err.message);
+      }
     } finally {
       setSaving(false);
     }
@@ -88,8 +97,15 @@ export default function AlertsPage() {
           )}
         </div>
 
+        {upgradeMsg && <UpgradePrompt message={upgradeMsg} />}
+
         {showCreateForm && (
-          <AlertForm onSubmit={handleCreate} onCancel={closeForm} saving={saving} />
+          <AlertForm
+            onSubmit={handleCreate}
+            onCancel={closeForm}
+            saving={saving}
+            allowedFrequencies={planLimits?.allowed_alert_frequencies}
+          />
         )}
 
         {loading ? (

@@ -1,13 +1,17 @@
+import csv
+import io
 from datetime import datetime, timezone
 from uuid import UUID
 
 import structlog
 from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi.responses import StreamingResponse
 from sqlalchemy import case, distinct, func, select
 from sqlalchemy.orm import aliased
 
-from app.api.v1.deps import CurrentUserId, DbSession, TenantId
+from app.api.v1.deps import CurrentUserId, DbSession, TenantId, TenantPlan
 from app.models import Company, Signal, Watchlist
+from app.plan_limits import raise_plan_limit
 from app.processing.deal_scorer import DealScoreResult, compute_deal_score
 from app.processing.disposition import get_disposition_window
 from app.rate_limit import limiter
@@ -332,14 +336,57 @@ async def list_opportunities(
     )
 
 
+@router.get("/export/csv")
+@limiter.limit("5/minute")
+async def export_opportunities_csv(
+    request: Request,
+    db: DbSession,
+    tp: TenantPlan,
+):
+    """Export all opportunities as CSV. Professional plan only."""
+    if not tp.limits.csv_export:
+        raise_plan_limit("csv_export", tp.plan, "CSV export requires the Professional plan.")
+
+    price_per_device = await _get_price_per_device(db, tp.tenant_id)
+    all_opps, total, _, _ = await _build_opportunities(
+        db, tp.tenant_id, price_per_device, per_page=9999
+    )
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "Company", "Ticker", "Industry", "State", "Deal Score", "Score Band",
+        "Devices", "Revenue Estimate", "Signal Count", "Signal Types",
+        "Sources", "Risk Score", "Risk Trend", "Latest Signal", "Disposition Window",
+    ])
+    for o in all_opps:
+        writer.writerow([
+            o.company_name, o.ticker or "", o.industry or "", o.headquarters_state or "",
+            o.deal_score, o.score_band_label,
+            o.total_device_estimate, f"{o.revenue_estimate:.2f}",
+            o.signal_count, "; ".join(o.signal_types),
+            "; ".join(o.source_names), o.composite_risk_score, o.risk_trend,
+            o.latest_signal_at.isoformat() if o.latest_signal_at else "",
+            o.disposition_window or "",
+        ])
+
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=opportunities.csv"},
+    )
+
+
 @router.get("/{company_id}", response_model=OpportunityDetailOut)
 @limiter.limit("60/minute")
 async def get_opportunity(
     request: Request,
     company_id: UUID,
     db: DbSession,
-    tenant_id: TenantId,
+    tp: TenantPlan,
 ):
+    tenant_id = tp.tenant_id
     price_per_device = await _get_price_per_device(db, tenant_id)
 
     company = await db.get(Company, company_id)
@@ -412,6 +459,10 @@ async def get_opportunity(
         signal_outs.append(out)
 
     score_breakdown = _result_to_breakdown(deal_result)
+
+    # Truncate score breakdown for non-pro plans
+    if tp.limits.score_breakdown_mode == "compact" and score_breakdown:
+        score_breakdown.factors = score_breakdown.factors[:3]
 
     return OpportunityDetailOut(
         company_id=company.id,
