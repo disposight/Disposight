@@ -170,7 +170,7 @@ export function AmbientEffects() {
           left: 0;
           pointer-events: none;
           border-radius: 9999px;
-          background: radial-gradient(circle, rgba(16,185,129,0.06), rgba(16,185,129,0.03), transparent 70%);
+          background: radial-gradient(circle, rgba(16,185,129,0.15), rgba(16,185,129,0.08), transparent 70%);
           transform: translate3d(0, 0, 0) translate(-50%, -50%);
           will-change: transform, opacity;
           transition: opacity 300ms ease-out;
@@ -200,7 +200,7 @@ export function AmbientEffects() {
           100% { transform: translate(-50%, -50%) scale(12); opacity: 0; }
         }
         .ds-grid-line {
-          stroke: rgba(16,185,129,0.25);
+          stroke: rgba(16,185,129,0.35);
           stroke-width: 0.5;
           opacity: 0;
           stroke-dasharray: 5 5;
@@ -287,7 +287,7 @@ export function AmbientEffects() {
             <path
               d="M 60 0 L 0 0 0 60"
               fill="none"
-              stroke="rgba(16,185,129,0.08)"
+              stroke="rgba(16,185,129,0.18)"
               strokeWidth="0.5"
             />
           </pattern>
@@ -339,7 +339,7 @@ export function AmbientEffects() {
       <div
         ref={gradientRef}
         className="ds-gradient w-60 h-60 sm:w-80 sm:h-80 md:w-96 md:h-96"
-        style={{ opacity: 0, filter: "blur(60px)" }}
+        style={{ opacity: 0, filter: "blur(40px)" }}
       />
 
       {/* Click ripples */}
