@@ -19,7 +19,7 @@ import KineticDotsLoader from "@/components/ui/kinetic-dots-loader";
 export default function OpportunityDetailPage() {
   const params = useParams();
   const companyId = params.company_id as string;
-  const { isPro } = usePlan();
+  const { isPro, isTrial } = usePlan();
   const [opp, setOpp] = useState<OpportunityDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [watchLoading, setWatchLoading] = useState(false);
@@ -88,6 +88,69 @@ export default function OpportunityDetailPage() {
 
   if (!opp) {
     return <p style={{ color: "var(--text-muted)" }}>Deal not found</p>;
+  }
+
+  const isHotDealGated = isTrial && opp.deal_score >= 70;
+
+  if (isHotDealGated) {
+    return (
+      <PlanGate>
+        <div className="space-y-6 max-w-4xl">
+          <Link
+            href="/dashboard"
+            className="text-sm hover:underline"
+            style={{ color: "var(--accent)" }}
+          >
+            &larr; Back to Deals
+          </Link>
+
+          <div
+            className="p-8 rounded-lg text-center space-y-4"
+            style={{ backgroundColor: "var(--bg-surface)", border: "1px solid var(--border-default)" }}
+          >
+            <div className="flex justify-center">
+              <DealScoreBadge score={opp.deal_score} bandLabel={opp.score_band_label} size="lg" />
+            </div>
+            <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
+              High-Priority Deal
+            </h2>
+            <p className="text-sm max-w-md mx-auto" style={{ color: "var(--text-secondary)" }}>
+              This deal scored <strong>{opp.deal_score}</strong> and is classified as{" "}
+              <strong>{opp.score_band_label}</strong>. Upgrade your plan to access full deal
+              intelligence including company details, AI assessments, and signal evidence.
+            </p>
+
+            {/* Teaser stats — visible but company identity hidden */}
+            <div className="flex justify-center gap-6 pt-2">
+              <div>
+                <p className="text-xs" style={{ color: "var(--text-muted)" }}>Devices</p>
+                <p className="text-lg font-mono font-semibold" style={{ color: "var(--text-primary)" }}>
+                  {opp.total_device_estimate.toLocaleString()}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs" style={{ color: "var(--text-muted)" }}>Signals</p>
+                <p className="text-lg font-mono font-semibold" style={{ color: "var(--text-primary)" }}>
+                  {opp.signal_count}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs" style={{ color: "var(--text-muted)" }}>Sources</p>
+                <SourceBadges sources={opp.source_names} />
+              </div>
+            </div>
+
+            <Link
+              href="/dashboard/settings"
+              className="inline-block px-6 py-2.5 rounded-md text-sm font-medium transition-colors"
+              style={{ backgroundColor: "var(--accent)", color: "#fff" }}
+            >
+              Upgrade to Unlock
+            </Link>
+          </div>
+        </div>
+      </PlanGate>
+    );
   }
 
   return (

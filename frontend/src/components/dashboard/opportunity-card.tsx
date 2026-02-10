@@ -47,6 +47,7 @@ interface OpportunityCardProps {
   onWatch?: (companyId: string) => void;
   onClaim?: (companyId: string) => void;
   compact?: boolean;
+  gated?: boolean;
 }
 
 export function OpportunityCard({
@@ -54,11 +55,14 @@ export function OpportunityCard({
   onWatch,
   onClaim,
   compact = false,
+  gated = false,
 }: OpportunityCardProps) {
+  const cardHref = gated ? "/dashboard/settings" : `/dashboard/opportunities/${opp.company_id}`;
+
   return (
-    <Link href={`/dashboard/opportunities/${opp.company_id}`}>
+    <Link href={cardHref} title={gated ? "Upgrade to view this deal" : undefined}>
       <div
-        className="p-4 rounded-lg transition-colors cursor-pointer hover:border-[var(--accent)]"
+        className="p-4 rounded-lg transition-colors cursor-pointer hover:border-[var(--accent)] relative"
         style={{
           backgroundColor: "var(--bg-surface)",
           border: "1px solid var(--border-default)",
@@ -82,17 +86,33 @@ export function OpportunityCard({
                   className="text-sm font-semibold truncate"
                   style={{ color: "var(--text-primary)" }}
                 >
-                  {opp.company_name}
-                  {opp.ticker && (
-                    <span
-                      className="ml-2 text-xs font-mono font-normal"
-                      style={{ color: "var(--text-muted)" }}
-                    >
-                      {opp.ticker}
+                  {gated ? (
+                    <span className="inline-flex items-center gap-2">
+                      <span style={{ filter: "blur(6px)", userSelect: "none" }} aria-hidden="true">
+                        {opp.company_name}
+                      </span>
+                      <span
+                        className="text-[10px] font-medium px-1.5 py-0.5 rounded"
+                        style={{ backgroundColor: "var(--accent-muted)", color: "var(--accent)", filter: "none" }}
+                      >
+                        Upgrade
+                      </span>
                     </span>
+                  ) : (
+                    <>
+                      {opp.company_name}
+                      {opp.ticker && (
+                        <span
+                          className="ml-2 text-xs font-mono font-normal"
+                          style={{ color: "var(--text-muted)" }}
+                        >
+                          {opp.ticker}
+                        </span>
+                      )}
+                    </>
                   )}
                 </h3>
-                <div className="flex items-center gap-2 mt-0.5">
+                <div className="flex items-center gap-2 mt-0.5" style={gated ? { filter: "blur(4px)", userSelect: "none" } : undefined}>
                   {opp.industry && (
                     <span className="text-xs" style={{ color: "var(--text-muted)" }}>
                       {opp.industry}

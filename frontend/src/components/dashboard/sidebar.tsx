@@ -44,14 +44,14 @@ export function Sidebar() {
       }`}
       style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-default)" }}
     >
-      <div className="p-4 flex items-center gap-2">
+      <a href="/dashboard" className="p-4 flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
         <img src="/logo.png" alt="DispoSight" className="h-7" />
         {!collapsed && (
           <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
             DispoSight
           </span>
         )}
-      </div>
+      </a>
 
       <nav className="flex-1 px-2 py-4 space-y-6 overflow-y-auto">
         {navItems.map((section) => (

@@ -27,7 +27,7 @@ function formatValue(val: number) {
 }
 
 export default function DealsPage() {
-  const { isPro } = usePlan();
+  const { isPro, isTrial } = usePlan();
   const [data, setData] = useState<OpportunityListResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("All");
@@ -163,6 +163,7 @@ export default function DealsPage() {
                 key={opp.company_id}
                 opportunity={opp}
                 onWatch={handleWatch}
+                gated={isTrial && opp.deal_score >= 70}
               />
             ))}
           </div>
