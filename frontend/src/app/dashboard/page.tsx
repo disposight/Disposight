@@ -163,7 +163,7 @@ export default function DealsPage() {
                 key={opp.company_id}
                 opportunity={opp}
                 onWatch={handleWatch}
-                gated={isTrial && opp.deal_score >= 70}
+                gated={isTrial && opp.deal_score >= 70 && Date.now() - new Date(opp.latest_signal_at).getTime() < 7 * 86_400_000}
               />
             ))}
           </div>

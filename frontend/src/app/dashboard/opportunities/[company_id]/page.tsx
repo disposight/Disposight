@@ -90,7 +90,8 @@ export default function OpportunityDetailPage() {
     return <p style={{ color: "var(--text-muted)" }}>Deal not found</p>;
   }
 
-  const isHotDealGated = isTrial && opp.deal_score >= 70;
+  const isFresh = Date.now() - new Date(opp.latest_signal_at).getTime() < 7 * 86_400_000;
+  const isHotDealGated = isTrial && opp.deal_score >= 70 && isFresh;
 
   if (isHotDealGated) {
     return (
