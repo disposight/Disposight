@@ -1,4 +1,18 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: "Pricing — Plans Starting at $99/mo",
+  description:
+    "Simple, transparent pricing for ITAD intelligence. Starter plan from $99/month with all 4 data pipelines. Professional plan with real-time alerts and API access. 3-day free trial.",
+  openGraph: {
+    title: "DispoSight Pricing — ITAD Intelligence Plans",
+    description:
+      "Starter from $99/mo, Professional from $199/mo. All plans include WARN Act, bankruptcy, SEC, and news monitoring. Start with a free 3-day trial.",
+    url: "https://disposight.com/pricing",
+  },
+  alternates: { canonical: "https://disposight.com/pricing" },
+};
 
 const plans = [
   {

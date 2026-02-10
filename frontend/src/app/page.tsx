@@ -1,5 +1,19 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { AmbientEffects } from "@/components/ambient-effects";
+
+export const metadata: Metadata = {
+  title: "Detect Surplus IT Equipment Before Your Competitors",
+  description:
+    "DispoSight is the ITAD intelligence platform that monitors WARN Act filings, bankruptcy courts, SEC 8-K filings, and global news to deliver high-value IT asset disposition leads automatically.",
+  openGraph: {
+    title: "DispoSight — Detect Surplus IT Equipment Before Your Competitors",
+    description:
+      "AI-powered ITAD intelligence. Monitor layoffs, bankruptcies, closures, and M&A to find surplus IT equipment before anyone else.",
+    url: "https://disposight.com",
+  },
+  alternates: { canonical: "https://disposight.com" },
+};
 import { ScrollReveal } from "@/components/scroll-reveal";
 import { ScrollLink } from "@/components/scroll-link";
 import { Tooltip } from "@/components/tooltip";
