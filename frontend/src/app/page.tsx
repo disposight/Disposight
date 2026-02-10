@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AmbientEffects } from "@/components/ambient-effects";
 import { ScrollReveal } from "@/components/scroll-reveal";
+import { ScrollLink } from "@/components/scroll-link";
 import { Tooltip } from "@/components/tooltip";
 import { CountUp } from "@/components/count-up";
 
@@ -20,6 +21,52 @@ const badgeTooltips: Record<string, string> = {
 };
 
 const scoreTooltip = "Deal score (0–100) — higher means greater likelihood of surplus IT equipment becoming available";
+
+const plans = [
+  {
+    name: "Starter",
+    price: "$99",
+    period: "/month",
+    features: [
+      "All 4 data pipelines",
+      "50 watchlist companies",
+      "Daily email digest",
+      "1 team member",
+    ],
+    cta: "Start Free Trial",
+    highlighted: false,
+  },
+  {
+    name: "Professional",
+    price: "$199",
+    period: "/month",
+    features: [
+      "Everything in Starter",
+      "200 watchlist companies",
+      "Real-time alerts",
+      "5 team members",
+      "Signal correlation",
+      "API access",
+    ],
+    cta: "Start Free Trial",
+    highlighted: true,
+  },
+  {
+    name: "Enterprise",
+    price: "Custom",
+    period: "",
+    features: [
+      "Everything in Professional",
+      "Unlimited watchlist",
+      "Unlimited team members",
+      "Custom data sources",
+      "Priority support",
+      "SSO / SAML",
+    ],
+    cta: "Contact Sales",
+    highlighted: false,
+  },
+];
 
 const pipelines = [
   {
@@ -148,13 +195,13 @@ export default function HomePage() {
           </span>
         </Link>
         <div className="flex items-center gap-3 sm:gap-5">
-          <Link
-            href="/pricing"
-            className="text-sm hidden sm:inline transition-colors hover:opacity-80"
+          <ScrollLink
+            targetId="pricing"
+            className="text-sm hidden sm:inline transition-colors hover:opacity-80 cursor-pointer"
             style={{ color: "var(--text-secondary)" }}
           >
             Pricing
-          </Link>
+          </ScrollLink>
           <Link
             href="/login"
             className="text-sm transition-colors hover:opacity-80"
@@ -208,9 +255,9 @@ export default function HomePage() {
             >
               Start Free Trial
             </Link>
-            <Link
-              href="#live-signals"
-              className="px-8 py-3.5 rounded-md text-sm font-medium w-full sm:w-auto text-center transition-all hover:brightness-110"
+            <ScrollLink
+              targetId="live-signals"
+              className="px-8 py-3.5 rounded-md text-sm font-medium w-full sm:w-auto text-center transition-all hover:brightness-110 cursor-pointer"
               style={{
                 backgroundColor: "var(--bg-surface)",
                 color: "var(--text-secondary)",
@@ -218,7 +265,7 @@ export default function HomePage() {
               }}
             >
               See Live Signals
-            </Link>
+            </ScrollLink>
           </div>
           <span className="text-xs" style={{ color: "var(--text-muted)" }}>
             Free 3-day trial &middot; No credit card required
@@ -640,6 +687,106 @@ export default function HomePage() {
                   {t.company}
                 </p>
               </div>
+            </div>
+          ))}
+        </div>
+      </section>
+      </ScrollReveal>
+
+      {/* Pricing */}
+      <ScrollReveal stagger={120}>
+      <section id="pricing" className="max-w-5xl mx-auto px-4 sm:px-6 py-16 sm:py-24">
+        <div className="text-center mb-12">
+          <p
+            className="text-xs font-medium uppercase tracking-widest mb-3"
+            style={{ color: "var(--accent)" }}
+          >
+            Simple pricing
+          </p>
+          <h2
+            className="text-2xl sm:text-3xl font-bold mb-3"
+            style={{ color: "var(--text-primary)" }}
+          >
+            Choose your plan
+          </h2>
+          <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+            3-day free trial &middot; No credit card required &middot; Cancel anytime
+          </p>
+        </div>
+        <div className="grid sm:grid-cols-3 gap-6">
+          {plans.map((plan) => (
+            <div
+              key={plan.name}
+              className="sr-item p-6 sm:p-8 rounded-xl flex flex-col"
+              style={{
+                backgroundColor: "var(--bg-surface)",
+                border: plan.highlighted
+                  ? "2px solid var(--accent)"
+                  : "1px solid var(--border-default)",
+                boxShadow: plan.highlighted
+                  ? "0 0 30px rgba(16, 185, 129, 0.1)"
+                  : "0 2px 12px rgba(0, 0, 0, 0.2)",
+              }}
+            >
+              {plan.highlighted && (
+                <span
+                  className="text-[10px] font-bold uppercase tracking-wider mb-4 self-start px-2 py-0.5 rounded"
+                  style={{ backgroundColor: "var(--accent)", color: "#fff" }}
+                >
+                  Most Popular
+                </span>
+              )}
+              <h3
+                className="text-lg font-semibold mb-2"
+                style={{ color: "var(--text-primary)" }}
+              >
+                {plan.name}
+              </h3>
+              <div className="flex items-end gap-1 mb-6">
+                <span
+                  className="text-3xl sm:text-4xl font-mono font-bold"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {plan.price}
+                </span>
+                {plan.period && (
+                  <span
+                    className="text-sm mb-1"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    {plan.period}
+                  </span>
+                )}
+              </div>
+              <ul className="space-y-2.5 mb-8 flex-1">
+                {plan.features.map((feature) => (
+                  <li
+                    key={feature}
+                    className="flex items-start gap-2.5 text-sm"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    <span
+                      className="mt-0.5 shrink-0"
+                      style={{ color: "var(--accent)" }}
+                    >
+                      &#10003;
+                    </span>
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/register"
+                className="block w-full py-3 rounded-md text-sm font-medium text-center transition-all hover:brightness-110"
+                style={{
+                  backgroundColor: plan.highlighted
+                    ? "var(--accent)"
+                    : "var(--bg-elevated)",
+                  color: plan.highlighted ? "#fff" : "var(--text-secondary)",
+                }}
+              >
+                {plan.cta}
+              </Link>
             </div>
           ))}
         </div>
