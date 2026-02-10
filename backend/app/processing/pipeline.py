@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import RawSignal, Signal
 from app.processing.device_filter import estimate_devices
-from app.processing.entity_extractor import extract_entities, find_or_create_company
+from app.processing.entity_extractor import extract_entities, find_or_create_company, _clean_llm_value
 from app.processing.risk_scorer import update_company_risk_score
 from app.processing.signal_classifier import classify_signal
 from app.email.sender import match_and_send_realtime_alerts
@@ -71,12 +71,17 @@ async def process_pending_signals(db: AsyncSession) -> dict:
             summary = entities.get("summary", raw.raw_text)
 
             # Step 2: Find or create company
-            company = await find_or_create_company(
-                db,
-                company_name,
-                city=entities.get("location_city"),
-                state=entities.get("location_state"),
-            )
+            try:
+                company = await find_or_create_company(
+                    db,
+                    company_name,
+                    city=entities.get("location_city"),
+                    state=entities.get("location_state"),
+                )
+            except ValueError:
+                raw.processing_status = "discarded"
+                logger.info("pipeline.skipped_bad_company", raw_signal_id=str(raw.id), name=company_name)
+                continue
 
             # Step 3: Classification
             classification = await classify_signal(
@@ -114,8 +119,8 @@ async def process_pending_signals(db: AsyncSession) -> dict:
                 source_name=raw.source_type,
                 source_url=raw.source_url,
                 source_published_at=raw.created_at,
-                location_city=entities.get("location_city"),
-                location_state=entities.get("location_state"),
+                location_city=_clean_llm_value(entities.get("location_city")),
+                location_state=_clean_llm_value(entities.get("location_state")),
                 affected_employees=employees,
                 device_estimate=device_estimate,
             )

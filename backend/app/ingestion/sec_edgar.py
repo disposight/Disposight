@@ -154,13 +154,17 @@ class SecEdgarCollector(BaseCollector):
                 elif isinstance(company_name, str):
                     pass
                 else:
-                    company_name = source.get("entity_name", "Unknown")
+                    company_name = source.get("entity_name", "")
 
                 # Strip embedded ticker/CIK patterns like "(TER)  (CIK 0000097210)"
                 company_name = re.sub(r'\s*\([A-Z]{1,5}\)\s*', ' ', str(company_name))
                 company_name = re.sub(r'\s*\(CIK \d+\)\s*', '', company_name)
                 company_name = re.sub(r'\s*/[A-Z]{2,3}/\s*', ' ', company_name)
                 company_name = re.sub(r'\s{2,}', ' ', company_name).strip()
+
+                if not company_name or company_name.lower() == "unknown":
+                    logger.debug("sec_edgar.skipped_no_company", filing=source.get("accession_no"))
+                    continue
 
                 filing_date = source.get("file_date") or source.get("period_of_report")
                 event_date = None

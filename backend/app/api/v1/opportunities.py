@@ -79,8 +79,8 @@ async def _build_opportunities(
     """Build opportunity list from companies + signals."""
     now = datetime.now(timezone.utc)
 
-    # Base query: companies with at least one signal
-    base_filter = Signal.device_estimate.isnot(None)
+    # Base query: companies with at least one signal, excluding unresolved names
+    base_filter = Signal.device_estimate.isnot(None) & (Company.normalized_name != "unknown")
 
     if signal_type:
         base_filter = base_filter & (Signal.signal_type == signal_type)

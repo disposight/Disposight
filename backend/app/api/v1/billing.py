@@ -60,6 +60,7 @@ async def create_checkout(request: Request, body: CheckoutRequest, db: DbSession
         customer=tenant.stripe_customer_id,
         mode="subscription",
         line_items=[{"price": _resolve_price_id(body.price_id) if body.price_id else settings.stripe_starter_price_id, "quantity": 1}],
+        subscription_data={"trial_period_days": 3},
         ui_mode="embedded",
         return_url=f"{settings.frontend_url}/dashboard/settings?billing=success",
     )
@@ -88,6 +89,7 @@ async def create_subscription(request: Request, body: CheckoutRequest, db: DbSes
     subscription = stripe.Subscription.create(
         customer=tenant.stripe_customer_id,
         items=[{"price": _resolve_price_id(body.price_id) if body.price_id else settings.stripe_starter_price_id}],
+        trial_period_days=3,
         payment_behavior="default_incomplete",
         payment_settings={"save_default_payment_method": "on_subscription"},
         expand=["latest_invoice.payment_intent"],
