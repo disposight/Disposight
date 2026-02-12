@@ -97,7 +97,7 @@ export function PlanGate({ children }: { children: ReactNode }) {
             Upgrade Now
           </Link>
           <p className="text-xs mt-3" style={{ color: "var(--text-muted)" }}>
-            Starting at $99/month
+            Starting at $199/month
           </p>
         </div>
       </div>

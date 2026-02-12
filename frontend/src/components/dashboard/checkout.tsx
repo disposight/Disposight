@@ -41,36 +41,34 @@ const appearance: Appearance = {
   },
 };
 
-const plans = [
-  {
-    id: "starter",
-    name: "Starter",
-    monthly: { price: 99, priceId: "starter" },
-    yearly: { price: 84, total: 1008, savings: 180, priceId: "starter_yearly" },
-    features: [
-      "All 4 data pipelines",
-      "50 watchlist companies",
-      "Daily email digest",
-      "1 team member",
-    ],
-    highlighted: false,
-  },
-  {
-    id: "pro",
-    name: "Professional",
-    monthly: { price: 199, priceId: "pro" },
-    yearly: { price: 169, total: 2028, savings: 360, priceId: "pro_yearly" },
-    features: [
-      "Everything in Starter",
-      "200 watchlist companies",
-      "Real-time alerts",
-      "5 team members",
-      "Signal correlation",
-      "API access",
-    ],
-    highlighted: true,
-  },
-];
+const plan = {
+  id: "starter",
+  name: "Professional",
+  monthly: { price: 199, priceId: "starter" },
+  yearly: { price: 169, total: 2028, savings: 360, priceId: "starter_yearly" },
+  features: [
+    "All 4 data pipelines",
+    "Real-time, daily & weekly alerts",
+    "200 watchlist companies",
+    "Full deal scoring & signal correlation",
+    "CSV export",
+    "Full signal history",
+  ],
+};
+
+// Preserved for future use — Pro tier plan definition
+// const proPlan = {
+//   id: "pro",
+//   name: "Pro",
+//   monthly: { price: 399, priceId: "pro" },
+//   yearly: { price: 339, total: 4068, savings: 720, priceId: "pro_yearly" },
+//   features: [
+//     "Everything in Professional",
+//     "Multi-user team access",
+//     "API access",
+//     "Priority support",
+//   ],
+// };
 
 function BillingToggle({
   isYearly,
@@ -197,23 +195,17 @@ export function UpgradeFlow({
   onCancel: () => void;
 }) {
   const [isYearly, setIsYearly] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<(typeof plans)[0] | null>(
-    null
-  );
-  const [selectedBilling, setSelectedBilling] = useState<"monthly" | "yearly">(
-    "monthly"
-  );
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("monthly");
 
-  const handleSelectPlan = useCallback(
-    async (plan: (typeof plans)[0]) => {
-      setSelectedPlan(plan);
-      setSelectedBilling(isYearly ? "yearly" : "monthly");
+  const handleSubscribe = useCallback(
+    async () => {
       setLoading(true);
       setError(null);
+      setBillingPeriod(isYearly ? "yearly" : "monthly");
 
       const priceId = isYearly ? plan.yearly.priceId : plan.monthly.priceId;
 
@@ -224,7 +216,6 @@ export function UpgradeFlow({
         setError(
           err instanceof Error ? err.message : "Failed to start subscription"
         );
-        setSelectedPlan(null);
       } finally {
         setLoading(false);
       }
@@ -233,7 +224,6 @@ export function UpgradeFlow({
   );
 
   const handleBack = useCallback(() => {
-    setSelectedPlan(null);
     setClientSecret(null);
     setError(null);
   }, []);
@@ -261,18 +251,18 @@ export function UpgradeFlow({
           Subscription Active
         </h3>
         <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-          Welcome to {selectedPlan?.name}. Refreshing your account...
+          Welcome to {plan.name}. Refreshing your account...
         </p>
       </div>
     );
   }
 
   // Payment phase
-  if (selectedPlan && clientSecret) {
+  if (clientSecret) {
     const billingLabel =
-      selectedBilling === "yearly"
-        ? `${selectedPlan.name} (Yearly)`
-        : selectedPlan.name;
+      billingPeriod === "yearly"
+        ? `${plan.name} (Yearly)`
+        : plan.name;
     return (
       <div className="space-y-4">
         <Elements
@@ -289,7 +279,8 @@ export function UpgradeFlow({
     );
   }
 
-  // Plan selection phase
+  const price = isYearly ? plan.yearly.price : plan.monthly.price;
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
@@ -297,7 +288,7 @@ export function UpgradeFlow({
           className="text-base font-semibold"
           style={{ color: "var(--text-primary)" }}
         >
-          Choose a Plan
+          Upgrade to {plan.name}
         </h3>
         <button
           onClick={onCancel}
@@ -316,100 +307,66 @@ export function UpgradeFlow({
         </p>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {plans.map((plan) => {
-          const price = isYearly ? plan.yearly.price : plan.monthly.price;
-          const period = isYearly ? "/mo" : "/month";
+      <div
+        className="rounded-lg p-5"
+        style={{
+          backgroundColor: "#32323e",
+          border: "1px solid var(--accent)",
+        }}
+      >
+        <h4
+          className="text-sm font-semibold mb-1"
+          style={{ color: "var(--text-primary)" }}
+        >
+          {plan.name}
+        </h4>
+        <div className="flex items-baseline gap-0.5 mb-1">
+          <span
+            className="text-2xl font-bold"
+            style={{ color: "var(--text-primary)" }}
+          >
+            ${price}
+          </span>
+          <span
+            className="text-sm"
+            style={{ color: "var(--text-muted)" }}
+          >
+            /month
+          </span>
+        </div>
+        {isYearly && (
+          <p className="text-xs mb-3" style={{ color: "var(--accent)" }}>
+            ${plan.yearly.total}/yr — save ${plan.yearly.savings}
+          </p>
+        )}
+        {!isYearly && <div className="mb-3" />}
 
-          return (
-            <div
-              key={plan.id}
-              className="relative rounded-lg p-5 transition-colors"
-              style={{
-                backgroundColor: "#32323e",
-                border: plan.highlighted
-                  ? "1px solid var(--accent)"
-                  : "1px solid #4a4a55",
-              }}
+        <ul className="space-y-2 mb-5">
+          {plan.features.map((feature) => (
+            <li
+              key={feature}
+              className="flex items-start gap-2 text-sm"
+              style={{ color: "var(--text-secondary)" }}
             >
-              {plan.highlighted && (
-                <span
-                  className="absolute -top-2.5 left-4 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded-full"
-                  style={{
-                    backgroundColor: "var(--accent)",
-                    color: "#fff",
-                  }}
-                >
-                  Most Popular
-                </span>
-              )}
-
-              <h4
-                className="text-sm font-semibold mb-1"
-                style={{ color: "var(--text-primary)" }}
+              <span
+                className="mt-0.5 flex-shrink-0"
+                style={{ color: "var(--accent)" }}
               >
-                {plan.name}
-              </h4>
-              <div className="flex items-baseline gap-0.5 mb-1">
-                <span
-                  className="text-2xl font-bold"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  ${price}
-                </span>
-                <span
-                  className="text-sm"
-                  style={{ color: "var(--text-muted)" }}
-                >
-                  {period}
-                </span>
-              </div>
-              {isYearly && (
-                <p className="text-xs mb-3" style={{ color: "var(--accent)" }}>
-                  ${plan.yearly.total}/yr — save ${plan.yearly.savings}
-                </p>
-              )}
-              {!isYearly && <div className="mb-3" />}
+                &#x2713;
+              </span>
+              {feature}
+            </li>
+          ))}
+        </ul>
 
-              <ul className="space-y-2 mb-5">
-                {plan.features.map((feature) => (
-                  <li
-                    key={feature}
-                    className="flex items-start gap-2 text-sm"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    <span
-                      className="mt-0.5 flex-shrink-0"
-                      style={{ color: "var(--accent)" }}
-                    >
-                      &#x2713;
-                    </span>
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-
-              <button
-                onClick={() => handleSelectPlan(plan)}
-                disabled={loading}
-                className="w-full py-2 rounded-md text-sm font-medium transition-colors disabled:opacity-50"
-                style={
-                  plan.highlighted
-                    ? { backgroundColor: "var(--accent)", color: "#fff" }
-                    : {
-                        backgroundColor: "transparent",
-                        color: "var(--text-primary)",
-                        border: "1px solid #4a4a55",
-                      }
-                }
-              >
-                {loading && selectedPlan?.id === plan.id
-                  ? "Loading..."
-                  : "Select"}
-              </button>
-            </div>
-          );
-        })}
+        <button
+          onClick={handleSubscribe}
+          disabled={loading}
+          className="w-full py-2.5 rounded-md text-sm font-medium transition-colors disabled:opacity-50"
+          style={{ backgroundColor: "var(--accent)", color: "#fff" }}
+        >
+          {loading ? "Loading..." : "Start 3-Day Free Trial"}
+        </button>
       </div>
     </div>
   );

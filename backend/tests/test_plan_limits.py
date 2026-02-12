@@ -39,9 +39,12 @@ def test_get_trialing_plan():
 
 def test_get_starter_plan():
     limits = get_plan_limits("starter")
-    assert limits.max_watchlist_companies == 50
-    assert limits.max_signal_analyses_per_day == 5
-    assert limits.csv_export is False
+    assert limits.max_watchlist_companies == 200
+    assert limits.max_signal_analyses_per_day is None  # unlimited
+    assert limits.csv_export is True
+    assert limits.team_pipeline is False
+    assert limits.score_breakdown_mode == "full"
+    assert "realtime" in limits.allowed_alert_frequencies
 
 
 def test_get_pro_plan():
@@ -69,10 +72,11 @@ def test_none_plan_defaults_to_free():
 # Plan hierarchy
 # ---------------------------------------------------------------------------
 
-def test_pro_has_more_watchlist_than_starter():
+def test_pro_has_team_pipeline_unlike_starter():
     starter = get_plan_limits("starter")
     pro = get_plan_limits("pro")
-    assert pro.max_watchlist_companies > starter.max_watchlist_companies
+    assert pro.team_pipeline is True
+    assert starter.team_pipeline is False
 
 
 def test_starter_has_more_watchlist_than_free():
@@ -81,10 +85,10 @@ def test_starter_has_more_watchlist_than_free():
     assert starter.max_watchlist_companies > free.max_watchlist_companies
 
 
-def test_pro_has_more_alert_frequencies():
+def test_starter_and_pro_share_alert_frequencies():
     starter = get_plan_limits("starter")
     pro = get_plan_limits("pro")
-    assert len(pro.allowed_alert_frequencies) > len(starter.allowed_alert_frequencies)
+    assert starter.allowed_alert_frequencies == pro.allowed_alert_frequencies
 
 
 # ---------------------------------------------------------------------------

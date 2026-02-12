@@ -2,13 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Pricing — Plans Starting at $99/mo",
+  title: "Pricing — Professional Plan $199/mo",
   description:
-    "Simple, transparent pricing for corporate distress intelligence. Starter plan from $99/month with all 4 data pipelines. Professional plan with real-time alerts and API access. 3-day free trial.",
+    "Full access to corporate distress intelligence for $199/month. All 4 data pipelines, real-time alerts, deal scoring, CSV export. 3-day free trial, no credit card required.",
   openGraph: {
-    title: "DispoSight Pricing — Corporate Distress Intelligence Plans",
+    title: "DispoSight Pricing — Corporate Distress Intelligence",
     description:
-      "Starter from $99/mo, Professional from $199/mo. All plans include WARN Act, bankruptcy, SEC, and news monitoring. Start with a free 3-day trial.",
+      "Professional plan at $199/mo. WARN Act, bankruptcy, SEC, and news monitoring with real-time alerts and deal scoring. Start with a free 3-day trial.",
     url: "https://disposight.com/pricing",
   },
   alternates: { canonical: "https://disposight.com/pricing" },
@@ -16,32 +16,21 @@ export const metadata: Metadata = {
 
 const plans = [
   {
-    name: "Starter",
-    price: "$99",
-    period: "/month",
-    features: [
-      "All 4 data pipelines",
-      "50 watchlist companies",
-      "Daily email digest",
-      "1 team member",
-    ],
-    cta: "Start Free Trial",
-    highlighted: false,
-  },
-  {
     name: "Professional",
     price: "$199",
     period: "/month",
     features: [
-      "Everything in Starter",
+      "All 4 data pipelines (WARN, GDELT, SEC, Court)",
+      "Real-time, daily & weekly alerts",
       "200 watchlist companies",
-      "Real-time alerts",
-      "5 team members",
-      "Signal correlation",
-      "API access",
+      "Full 8-factor deal scoring",
+      "Signal correlation & risk trends",
+      "CSV export",
+      "Full signal history",
     ],
     cta: "Start Free Trial",
     highlighted: true,
+    href: "/register",
   },
   {
     name: "Enterprise",
@@ -49,14 +38,16 @@ const plans = [
     period: "",
     features: [
       "Everything in Professional",
-      "Unlimited watchlist",
-      "Unlimited team members",
+      "Unlimited watchlist companies",
+      "Multi-user team access",
       "Custom data sources",
-      "Priority support",
+      "API access",
+      "Priority support & SLA",
       "SSO / SAML",
     ],
     cta: "Contact Sales",
     highlighted: false,
+    href: "mailto:sales@disposight.com",
   },
 ];
 
@@ -73,7 +64,7 @@ export default function PricingPage() {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto">
           {plans.map((plan) => (
             <div
               key={plan.name}
@@ -84,6 +75,14 @@ export default function PricingPage() {
                 boxShadow: plan.highlighted ? "0 0 30px rgba(16, 185, 129, 0.1)" : "0 2px 12px rgba(0, 0, 0, 0.2)",
               }}
             >
+              {plan.highlighted && (
+                <span
+                  className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full self-start mb-4"
+                  style={{ backgroundColor: "var(--accent-muted)", color: "var(--accent)" }}
+                >
+                  3-day free trial
+                </span>
+              )}
               <h3 className="text-xl font-semibold mb-3" style={{ color: "var(--text-primary)" }}>
                 {plan.name}
               </h3>
@@ -104,7 +103,7 @@ export default function PricingPage() {
                 ))}
               </ul>
               <Link
-                href="/register"
+                href={plan.href}
                 className="block w-full py-3 rounded-md text-sm font-medium text-center transition-colors"
                 style={{
                   backgroundColor: plan.highlighted ? "var(--accent)" : "var(--bg-elevated)",

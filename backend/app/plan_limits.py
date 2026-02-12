@@ -43,13 +43,13 @@ PLAN_LIMITS: dict[str, PlanLimits] = {
         team_pipeline=False,
     ),
     "starter": PlanLimits(
-        max_watchlist_companies=50,
-        max_active_alerts=3,
-        max_signal_analyses_per_day=5,
-        allowed_alert_frequencies=["daily"],
-        signal_history_days=30,
-        score_breakdown_mode="compact",
-        csv_export=False,
+        max_watchlist_companies=200,
+        max_active_alerts=999,  # effectively unlimited
+        max_signal_analyses_per_day=None,
+        allowed_alert_frequencies=["realtime", "daily", "weekly"],
+        signal_history_days=None,
+        score_breakdown_mode="full",
+        csv_export=True,
         team_pipeline=False,
     ),
     "pro": PlanLimits(
