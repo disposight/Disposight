@@ -158,14 +158,19 @@ export default function DealsPage() {
           </div>
         ) : data?.opportunities.length ? (
           <div className="space-y-3">
-            {data.opportunities.map((opp) => (
-              <OpportunityCard
-                key={opp.company_id}
-                opportunity={opp}
-                onWatch={handleWatch}
-                gated={isTrial && opp.deal_score >= 70 && Date.now() - new Date(opp.latest_signal_at).getTime() < 7 * 86_400_000}
-              />
-            ))}
+            {data.opportunities.map((opp) => {
+              const ageMs = Date.now() - new Date(opp.latest_signal_at).getTime();
+              const isHotDeal = opp.deal_score >= 70 && ageMs < 7 * 86_400_000;
+              const isFresh = ageMs < 5 * 86_400_000;
+              return (
+                <OpportunityCard
+                  key={opp.company_id}
+                  opportunity={opp}
+                  onWatch={handleWatch}
+                  gated={isTrial && (isHotDeal || isFresh)}
+                />
+              );
+            })}
           </div>
         ) : (
           <div className="p-8 rounded-lg text-center" style={{ backgroundColor: "var(--bg-surface)" }}>
