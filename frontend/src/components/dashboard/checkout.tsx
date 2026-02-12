@@ -45,7 +45,7 @@ const plan = {
   id: "starter",
   name: "Professional",
   monthly: { price: 199, priceId: "starter" },
-  yearly: { price: 169, total: 2028, savings: 360, priceId: "starter_yearly" },
+  yearly: { price: 175, total: 2100, savings: 288, priceId: "starter_yearly" },
   features: [
     "All 4 data pipelines",
     "Real-time, daily & weekly alerts",
@@ -107,7 +107,7 @@ function BillingToggle({
           className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
           style={{ backgroundColor: "var(--accent-muted)", color: "var(--accent)" }}
         >
-          Save 15%
+          Save 12%
         </span>
       )}
     </div>
