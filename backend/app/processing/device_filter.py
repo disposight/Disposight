@@ -1,6 +1,6 @@
-"""Critical filter: estimate surplus devices from a signal.
+"""Critical filter: estimate surplus assets from a signal.
 
-Every signal must answer: "Could this event produce 100+ surplus devices?"
+Every signal must answer: "Could this event produce 100+ estimated assets?"
 """
 
 import structlog

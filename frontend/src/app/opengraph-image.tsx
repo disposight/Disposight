@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const alt = "DispoSight — ITAD Intelligence Platform";
+export const alt = "DispoSight — Corporate Distress Intelligence";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -49,7 +49,7 @@ export default function OGImage() {
               lineHeight: 1.4,
             }}
           >
-            Detect surplus IT equipment before your competitors
+            Corporate distress intelligence. Find asset deals first.
           </div>
           <div
             style={{

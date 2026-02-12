@@ -204,7 +204,7 @@ export interface SignalSource {
 
 export interface SignalAnalysis {
   event_breakdown: string;
-  itad_impact: string;
+  asset_impact: string;
   company_context: string;
   asset_opportunity: string;
   opportunity_score: number;

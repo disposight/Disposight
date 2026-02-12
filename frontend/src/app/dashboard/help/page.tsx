@@ -5,11 +5,11 @@ import { useState } from "react";
 const faqItems = [
   {
     q: "What is DispoSight?",
-    a: "DispoSight is a subscription intelligence platform built for ITAD (IT Asset Disposition) and liquidation companies. It detects early signals of corporate distress — layoffs, bankruptcies, facility closures, and M&A activity — and delivers actionable leads so you can reach out before competitors.",
+    a: "DispoSight is a corporate distress intelligence platform built for deal-driven organizations — liquidation firms, distressed-focused PE groups, equipment remarketers, and wholesale asset buyers. It detects early signals of corporate distress — layoffs, bankruptcies, facility closures, and M&A activity — and delivers actionable disposition opportunities so you can reach out before competitors.",
   },
   {
     q: "What types of signals does DispoSight track?",
-    a: "DispoSight tracks four categories of signals: WARN Act layoff notices, news events from GDELT (closures, shutdowns, liquidation mentions), SEC EDGAR 8-K filings related to M&A and restructuring, and CourtListener bankruptcy filings (Chapter 7 and Chapter 11). Each signal is classified by type, severity, and estimated device count.",
+    a: "DispoSight tracks four categories of signals: WARN Act layoff notices, news events from GDELT (closures, shutdowns, liquidation mentions), SEC EDGAR 8-K filings related to M&A and restructuring, and CourtListener bankruptcy filings (Chapter 7 and Chapter 11). Each signal is classified by type, severity, and estimated asset count.",
   },
   {
     q: "How often is data updated?",
@@ -17,11 +17,11 @@ const faqItems = [
   },
   {
     q: "What does the risk score mean?",
-    a: "The risk score (0–100) is a composite metric that reflects how likely a company is to generate surplus IT equipment. It combines multiple factors: the number and severity of signals, signal recency, signal type diversity, and historical patterns. A score above 70 is considered high-risk and likely worth immediate outreach. Scores between 40–70 are moderate and worth monitoring.",
+    a: "The risk score (0–100) is a composite metric that reflects how likely a company is to generate surplus corporate assets. It combines multiple factors: the number and severity of signals, signal recency, signal type diversity, and historical patterns. A score above 70 is considered high-risk and likely worth immediate outreach. Scores between 40–70 are moderate and worth monitoring.",
   },
   {
-    q: "How is the device estimate calculated?",
-    a: "The device estimate uses our NLP pipeline to analyze signal details — employee counts from WARN notices, facility sizes from news articles, company headcount data — and applies industry-standard ratios (typically 1–1.5 devices per affected employee) to estimate how many surplus devices an event could produce. Only signals estimated to produce 100+ devices pass our critical filter.",
+    q: "How is the asset estimate calculated?",
+    a: "The asset estimate uses our NLP pipeline to analyze signal details — employee counts from WARN notices, facility sizes from news articles, company headcount data — and applies industry-standard ratios (typically 1–1.5 assets per affected employee) to estimate how many surplus assets an event could produce. Only signals estimated to produce 100+ assets pass our critical filter.",
   },
   {
     q: "What is the WARN Act and why does it matter?",
@@ -53,11 +53,11 @@ const faqItems = [
   },
   {
     q: "What does \"facility_shutdown\" vs \"layoff\" mean?",
-    a: "These are signal type classifications. A \"layoff\" indicates workforce reduction — the company is cutting employees but may continue operations. A \"facility_shutdown\" indicates a physical location is closing entirely, which typically means all equipment at that site becomes surplus. Facility shutdowns generally produce more equipment per event than layoffs.",
+    a: "These are signal type classifications. A \"layoff\" indicates workforce reduction — the company is cutting employees but may continue operations. A \"facility_shutdown\" indicates a physical location is closing entirely, which typically means all assets at that site become surplus. Facility shutdowns generally produce more surplus assets per event than layoffs.",
   },
   {
     q: "How do I interpret the map markers?",
-    a: "Map markers are color-coded by signal severity: green for low, yellow for medium, orange for high, and red for critical. Marker size reflects estimated device count — larger markers mean more potential equipment. Click any marker to see the signal details, company name, and estimated device count.",
+    a: "Map markers are color-coded by signal severity: green for low, yellow for medium, orange for high, and red for critical. Marker size reflects estimated asset count — larger markers mean more potential surplus. Click any marker to see the signal details, company name, and estimated asset count.",
   },
   {
     q: "Is my data private?",
@@ -69,7 +69,7 @@ const guidesSections = [
   {
     title: "Getting Started",
     content: [
-      "DispoSight helps ITAD and liquidation companies find leads before the competition. After signing up, you land on the Dashboard — your command center for tracking corporate distress signals across the United States.",
+      "DispoSight helps deal-driven organizations find asset disposition opportunities before the competition. After signing up, you land on the Dashboard — your command center for tracking corporate distress signals across the United States.",
       "Your first steps should be: (1) review the Dashboard overview to understand current signal volume, (2) browse the Companies page to find organizations relevant to your territory, (3) add key companies to your Watchlist, and (4) configure Alerts so you're notified when new signals match your criteria.",
     ],
   },
@@ -83,8 +83,8 @@ const guidesSections = [
   {
     title: "Working with Signals",
     content: [
-      "Signals are the core of DispoSight — each one represents a detected event that could indicate surplus IT equipment. Navigate to the Signals page to see all signals in reverse chronological order.",
-      "Each signal card shows: the signal type (layoff, bankruptcy, facility_shutdown, etc.), the source pipeline (WARN Act, GDELT, SEC EDGAR, CourtListener), severity level, confidence score, estimated device count, and the associated company.",
+      "Signals are the core of DispoSight — each one represents a detected event that could indicate surplus corporate assets. Navigate to the Signals page to see all signals in reverse chronological order.",
+      "Each signal card shows: the signal type (layoff, bankruptcy, facility_shutdown, etc.), the source pipeline (WARN Act, GDELT, SEC EDGAR, CourtListener), severity level, confidence score, estimated asset count, and the associated company.",
       "Use the filters at the top to narrow results by type, severity, date range, or source. Click any signal to see the full details including the raw source data and NLP analysis.",
     ],
   },
@@ -98,7 +98,7 @@ const guidesSections = [
   {
     title: "Using the Signal Map",
     content: [
-      "The Map page provides a geographic view of all signals. Markers are color-coded by severity (green → yellow → orange → red) and sized by estimated device count.",
+      "The Map page provides a geographic view of all signals. Markers are color-coded by severity (green → yellow → orange → red) and sized by estimated asset count.",
       "Zoom into specific regions to find signals in your service territory. Click any marker to see signal details. Use the filter controls to show only certain signal types or severity levels.",
       "The map uses dark-themed CartoDB tiles to match the DispoSight interface and provides cluster grouping when zoomed out to prevent marker overlap.",
     ],
@@ -131,7 +131,7 @@ const guidesSections = [
   {
     title: "Reading Risk Scores & Trends",
     content: [
-      "Each company's risk score is a composite of: signal count (more signals = higher risk), signal severity (critical signals weigh more), signal recency (recent signals weigh more than old ones), signal diversity (multiple signal types increase risk), and estimated total device count.",
+      "Each company's risk score is a composite of: signal count (more signals = higher risk), signal severity (critical signals weigh more), signal recency (recent signals weigh more than old ones), signal diversity (multiple signal types increase risk), and estimated total asset count.",
       "The trend indicator (↑ rising, → stable, ↓ declining) shows how the risk score has changed over the past 30 days. A rising trend on a high-risk company is your strongest signal to take action.",
       "Risk scores update automatically as new signals are ingested and old signals age out. Check the Deals page regularly to spot emerging deals.",
     ],

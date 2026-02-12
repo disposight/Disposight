@@ -82,7 +82,7 @@ async def generate_signal_analysis(
     # Ensure required fields
     now = datetime.now(timezone.utc).isoformat()
     analysis.setdefault("event_breakdown", "")
-    analysis.setdefault("itad_impact", "")
+    analysis.setdefault("asset_impact", "")
     analysis.setdefault("company_context", "")
     analysis.setdefault("asset_opportunity", "")
     analysis.setdefault("opportunity_score", 50)

@@ -1,7 +1,7 @@
 [project]
 name = "disposight-backend"
 version = "0.1.0"
-description = "DispoSight - ITAD intelligence platform backend"
+description = "DispoSight - corporate distress intelligence platform backend"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115.0",
@@ -57,4 +57,5 @@ target-version = "py311"
 [dependency-groups]
 dev = [
     "aiosqlite>=0.22.1",
+    "pytest-cov>=7.0.0",
 ]

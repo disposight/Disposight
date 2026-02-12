@@ -88,6 +88,28 @@ async def backfill_company_enrichment(ctx):
         return result
 
 
+async def refresh_all_risk_scores(ctx):
+    from sqlalchemy import select
+
+    from app.db.session import async_session_factory
+    from app.models import Company
+    from app.processing.risk_scorer import update_company_risk_score
+
+    async with async_session_factory() as db:
+        result = await db.execute(
+            select(Company.id).where(Company.signal_count > 0)
+        )
+        company_ids = result.scalars().all()
+
+        updated = 0
+        for company_id in company_ids:
+            await update_company_risk_score(db, company_id)
+            updated += 1
+
+        await db.commit()
+        return {"companies_refreshed": updated}
+
+
 async def send_daily_digest(ctx):
     from app.db.session import async_session_factory
     from app.email.sender import send_digest
@@ -117,6 +139,7 @@ class WorkerSettings:
         process_raw_signals,
         enrich_companies,
         backfill_company_enrichment,
+        refresh_all_risk_scores,
         send_daily_digest,
         send_weekly_digest,
     ]
@@ -128,6 +151,7 @@ class WorkerSettings:
         cron(collect_globenewswire, hour={2, 8, 14, 20}),  # 4x/day, offset from EDGAR
         cron(process_raw_signals, hour=None, minute={10, 40}),
         cron(enrich_companies, hour={2, 8, 14, 20}, minute=30),
+        cron(refresh_all_risk_scores, hour=5, minute=0),  # Daily 5am UTC
         cron(send_daily_digest, hour=13, minute=0),
         cron(send_weekly_digest, weekday=1, hour=13, minute=0),
     ]

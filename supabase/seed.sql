@@ -3,7 +3,7 @@
 
 -- Tenant
 INSERT INTO tenants (id, name, slug, plan) VALUES
-    ('11111111-1111-1111-1111-111111111111', 'Demo ITAD Co', 'demo-itad-co', 'professional');
+    ('11111111-1111-1111-1111-111111111111', 'Demo Acq Co', 'demo-acq-co', 'professional');
 
 -- Companies
 INSERT INTO companies (id, name, normalized_name, ticker, industry, headquarters_city, headquarters_state, employee_count, composite_risk_score, signal_count, risk_trend) VALUES
@@ -18,7 +18,7 @@ INSERT INTO companies (id, name, normalized_name, ticker, industry, headquarters
 
 -- Signals
 INSERT INTO signals (id, company_id, signal_type, signal_category, title, summary, confidence_score, severity_score, source_name, source_url, location_city, location_state, affected_employees, device_estimate, created_at) VALUES
-    (gen_random_uuid(), 'aaaa0001-0000-0000-0000-000000000001', 'layoff', 'warn', 'Acme Corporation: WARN notice filed', 'WARN notice filed in CA: 340 employees affected at San Jose headquarters. Effective date March 15. High likelihood of 500+ surplus devices including laptops, monitors, and networking equipment.', 95, 82, 'warn_act', 'https://data.edd.ca.gov', 'San Jose', 'CA', 340, 510, NOW() - INTERVAL '2 hours'),
+    (gen_random_uuid(), 'aaaa0001-0000-0000-0000-000000000001', 'layoff', 'warn', 'Acme Corporation: WARN notice filed', 'WARN notice filed in CA: 340 employees affected at San Jose headquarters. Effective date March 15. High likelihood of 500+ surplus assets including laptops, monitors, and networking equipment.', 95, 82, 'warn_act', 'https://data.edd.ca.gov', 'San Jose', 'CA', 340, 510, NOW() - INTERVAL '2 hours'),
     (gen_random_uuid(), 'aaaa0001-0000-0000-0000-000000000001', 'office_closure', 'news', 'Acme Corporation closing San Jose R&D facility', 'Reports indicate Acme Corp is shutting down its 80,000 sq ft R&D center in San Jose as part of a broader restructuring effort.', 72, 78, 'gdelt', 'https://example.com/news/acme', 'San Jose', 'CA', NULL, 400, NOW() - INTERVAL '5 hours'),
     (gen_random_uuid(), 'aaaa0006-0000-0000-0000-000000000006', 'bankruptcy_ch11', 'bankruptcy', 'Pacific Retail Holdings files Chapter 11', 'Pacific Retail Holdings filed for Chapter 11 bankruptcy protection. 5,600 employees across 42 retail locations. Massive surplus of POS systems, inventory management hardware, and office equipment expected.', 92, 95, 'courtlistener', 'https://courtlistener.com/example', 'Los Angeles', 'CA', 5600, 16800, NOW() - INTERVAL '1 day'),
     (gen_random_uuid(), 'aaaa0006-0000-0000-0000-000000000006', 'liquidation', 'news', 'Pacific Retail planning to close 28 stores', 'Pacific Retail confirmed plans to close 28 of 42 stores nationwide. Equipment liquidation expected within 60 days.', 85, 90, 'gdelt', 'https://example.com/news/pacific', 'Los Angeles', 'CA', 3200, 9600, NOW() - INTERVAL '18 hours'),

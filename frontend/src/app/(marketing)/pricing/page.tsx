@@ -4,9 +4,9 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Pricing — Plans Starting at $99/mo",
   description:
-    "Simple, transparent pricing for ITAD intelligence. Starter plan from $99/month with all 4 data pipelines. Professional plan with real-time alerts and API access. 3-day free trial.",
+    "Simple, transparent pricing for corporate distress intelligence. Starter plan from $99/month with all 4 data pipelines. Professional plan with real-time alerts and API access. 3-day free trial.",
   openGraph: {
-    title: "DispoSight Pricing — ITAD Intelligence Plans",
+    title: "DispoSight Pricing — Corporate Distress Intelligence Plans",
     description:
       "Starter from $99/mo, Professional from $199/mo. All plans include WARN Act, bankruptcy, SEC, and news monitoring. Start with a free 3-day trial.",
     url: "https://disposight.com/pricing",
@@ -62,13 +62,9 @@ const plans = [
 
 export default function PricingPage() {
   return (
-    <div className="min-h-screen px-4 py-20" style={{ backgroundColor: "var(--bg-base)" }}>
+    <div className="px-4 py-20">
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-16">
-          <Link href="/" className="inline-flex items-center gap-2 mb-8">
-            <img src="/logo.png" alt="DispoSight" className="h-8" />
-            <span className="text-lg font-bold" style={{ color: "var(--accent)" }}>DispoSight</span>
-          </Link>
           <h1 className="text-4xl font-bold mb-4" style={{ color: "var(--text-primary)" }}>
             Simple, transparent pricing
           </h1>

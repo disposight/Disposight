@@ -290,7 +290,7 @@ export function AmbientEffects() {
             <path
               d="M 60 0 L 0 0 0 60"
               fill="none"
-              stroke="rgba(16,185,129,0.35)"
+              stroke="rgba(16,185,129,0.25)"
               strokeWidth="0.6"
             />
           </pattern>

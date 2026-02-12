@@ -17,7 +17,7 @@ const CONTACT_MAP: Record<string, { target: string; context: string }> = {
   facility_shutdown:   { target: "Facilities Director",       context: "Facility shutting down — building being vacated" },
   shutdown:            { target: "Facilities Director",       context: "Site shutdown — equipment disposition imminent" },
   plant_closing:       { target: "Plant Manager",             context: "Plant closing — manufacturing + IT assets in play" },
-  layoff:              { target: "VP of IT",                   context: "Headcount reduction — surplus devices from departed staff" },
+  layoff:              { target: "VP of IT",                   context: "Headcount reduction — surplus assets from departed staff" },
   bankruptcy_ch11:     { target: "CFO's Office",              context: "Ch. 11 restructuring — may divest non-core assets" },
   restructuring:       { target: "VP of IT",                   context: "Restructuring — consolidation creates surplus" },
   merger:              { target: "Integration Lead",           context: "M&A in progress — redundant assets post-close" },
@@ -49,10 +49,10 @@ function urgencyColor(disposition: string): string {
   }
 }
 
-function deviceContext(devices: number): string {
-  if (devices >= 5000) return `${devices.toLocaleString()} devices — enterprise-scale deal`;
-  if (devices >= 1000) return `${devices.toLocaleString()} devices in play`;
-  return `~${devices.toLocaleString()} devices estimated`;
+function deviceContext(assets: number): string {
+  if (assets >= 5000) return `${assets.toLocaleString()} assets — enterprise-scale deal`;
+  if (assets >= 1000) return `${assets.toLocaleString()} assets in play`;
+  return `~${assets.toLocaleString()} assets estimated`;
 }
 
 export function getNextAction(opp: Opportunity): NextAction {
@@ -63,10 +63,10 @@ export function getNextAction(opp: Opportunity): NextAction {
   const verb = pickVerb(opp.disposition_window, opp.deal_score);
   const target = entry?.target ?? "IT Decision-Maker";
   const eventReason = entry?.context ?? "Distress signals detected";
-  const devices = deviceContext(opp.total_device_estimate);
+  const assets = deviceContext(opp.total_device_estimate);
 
   // Build a tight reason: event context + device scale
-  const reason = `${eventReason}. ${devices}.`;
+  const reason = `${eventReason}. ${assets}.`;
 
   return { verb, target, reason, urgencyColor: urgencyColor(opp.disposition_window) };
 }

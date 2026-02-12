@@ -266,13 +266,13 @@ export default function SignalDrilldownPage() {
                 </div>
                 <div>
                   <p className="text-sm font-semibold" style={{ color: opp!.color }}>{opp!.label}</p>
-                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>ITAD Deal Score</p>
+                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>Deal Score</p>
                 </div>
               </div>
 
               {[
                 { title: "Event Breakdown", content: analysis.event_breakdown },
-                { title: "ITAD Impact Assessment", content: analysis.itad_impact },
+                { title: "Asset Impact Assessment", content: analysis.asset_impact },
                 { title: "Company Context", content: analysis.company_context },
                 { title: "Asset Recovery Potential", content: analysis.asset_opportunity },
               ].map(({ title, content }) => content && (

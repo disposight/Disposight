@@ -3,13 +3,13 @@ import Link from "next/link";
 import { AmbientEffects } from "@/components/ambient-effects";
 
 export const metadata: Metadata = {
-  title: "Detect Surplus IT Equipment Before Your Competitors",
+  title: "Corporate Distress Intelligence — Find Asset Deals Before the Competition",
   description:
-    "DispoSight is the ITAD intelligence platform that monitors WARN Act filings, bankruptcy courts, SEC 8-K filings, and global news to deliver high-value IT asset disposition leads automatically.",
+    "DispoSight identifies companies showing early signs of large-scale asset disposition so you can discover high-value opportunities before they're broadly marketed.",
   openGraph: {
-    title: "DispoSight — Detect Surplus IT Equipment Before Your Competitors",
+    title: "DispoSight — Corporate Distress Intelligence",
     description:
-      "AI-powered ITAD intelligence. Monitor layoffs, bankruptcies, closures, and M&A to find surplus IT equipment before anyone else.",
+      "Find asset deals before the competition. Monitor layoffs, bankruptcies, closures, and M&A to discover disposition opportunities before anyone else.",
     url: "https://disposight.com",
   },
   alternates: { canonical: "https://disposight.com" },
@@ -34,7 +34,7 @@ const badgeTooltips: Record<string, string> = {
   COURT: "Federal bankruptcy court filing — Chapter 7 (liquidation) or Chapter 11 (reorganization)",
 };
 
-const scoreTooltip = "Deal score (0–100) — higher means greater likelihood of surplus IT equipment becoming available";
+const scoreTooltip = "Deal score (0–100) — higher means greater likelihood of surplus corporate assets becoming available";
 
 const plans = [
   {
@@ -126,7 +126,7 @@ const steps = [
     title: "Analyze",
     subtitle: "AI scores every signal",
     description:
-      "Each event is scored on confidence, severity, and likelihood of producing 100+ surplus devices. Low-quality noise is filtered out.",
+      "Each event is scored on confidence, severity, and likelihood of producing 100+ estimated assets. Low-quality noise is filtered out.",
   },
   {
     number: "03",
@@ -158,7 +158,7 @@ const proofPoints = [
     prefix: "",
     suffix: "",
     label: "Actionable signals",
-    context: "past the 100-device threshold",
+    context: "past the 100-asset threshold",
     duration: 2400,
   },
   {
@@ -183,7 +183,7 @@ const testimonials = [
     quote:
       "We used to find out about deals through word of mouth, weeks after our competitors. DispoSight changed that completely.",
     role: "VP of Acquisitions",
-    company: "National ITAD Provider",
+    company: "National Liquidation Firm",
   },
   {
     quote:
@@ -235,19 +235,6 @@ export default function HomePage() {
 
       {/* Hero */}
       <section className="max-w-4xl mx-auto px-4 sm:px-6 pt-16 sm:pt-24 md:pt-32 pb-12 sm:pb-16 text-center">
-        <p
-          className="hero-label text-xs sm:text-sm font-medium uppercase tracking-widest mb-4 sm:mb-6"
-          style={{ color: "var(--accent)" }}
-        >
-          Subscription intelligence for ITAD &amp; liquidation
-        </p>
-        <h1
-          className="hero-heading text-4xl sm:text-5xl md:text-6xl font-bold leading-[1.1] mb-6 sm:mb-8"
-          style={{ color: "var(--text-primary)" }}
-        >
-          Detect surplus IT equipment{" "}
-          <span style={{ color: "var(--accent)" }}>before your competitors</span>
-        </h1>
         <img
           src="/logo.png"
           alt="DispoSight"
@@ -255,12 +242,25 @@ export default function HomePage() {
           style={{ mixBlendMode: "screen" }}
         />
         <p
+          className="hero-label text-xs sm:text-sm font-medium uppercase tracking-widest mb-4 sm:mb-6"
+          style={{ color: "var(--accent)" }}
+        >
+          Corporate distress intelligence
+        </p>
+        <h1
+          className="hero-heading text-4xl sm:text-5xl md:text-6xl font-bold leading-[1.1] mb-6 sm:mb-8"
+          style={{ color: "var(--text-primary)" }}
+        >
+          Find asset deals{" "}
+          <span style={{ color: "var(--accent)" }}>before the competition</span>
+        </h1>
+        <p
           className="hero-subtitle text-base sm:text-lg md:text-xl max-w-2xl mx-auto mb-8 sm:mb-10 leading-relaxed"
           style={{ color: "var(--text-secondary)" }}
         >
           DispoSight monitors layoffs, bankruptcies, closures, and M&amp;A across
           federal databases and news — then ranks which companies are most likely
-          to have hardware you can buy.
+          to have surplus assets you can acquire.
         </p>
         <div className="hero-cta flex flex-col items-center gap-4">
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 w-full sm:w-auto">
@@ -487,7 +487,7 @@ export default function HomePage() {
           className="text-base sm:text-lg leading-relaxed mb-6"
           style={{ color: "var(--text-secondary)" }}
         >
-          Most ITAD and liquidation teams rely on word of mouth, cold calls, and manual
+          Most acquisition teams rely on word of mouth, cold calls, and manual
           Google Alerts. By the time you hear about a deal, someone else has already
           made the call.
         </p>
@@ -861,11 +861,32 @@ export default function HomePage() {
           </div>
           <div className="flex items-center gap-6">
             <Link
+              href="/about"
+              className="text-xs transition-colors hover:opacity-80"
+              style={{ color: "var(--text-muted)" }}
+            >
+              About
+            </Link>
+            <Link
               href="/pricing"
               className="text-xs transition-colors hover:opacity-80"
               style={{ color: "var(--text-muted)" }}
             >
               Pricing
+            </Link>
+            <Link
+              href="/faq"
+              className="text-xs transition-colors hover:opacity-80"
+              style={{ color: "var(--text-muted)" }}
+            >
+              FAQ
+            </Link>
+            <Link
+              href="/contact"
+              className="text-xs transition-colors hover:opacity-80"
+              style={{ color: "var(--text-muted)" }}
+            >
+              Contact
             </Link>
             <Link
               href="/login"
@@ -874,13 +895,6 @@ export default function HomePage() {
             >
               Sign In
             </Link>
-            <a
-              href="mailto:support@disposight.com"
-              className="text-xs transition-colors hover:opacity-80"
-              style={{ color: "var(--text-muted)" }}
-            >
-              Contact
-            </a>
           </div>
         </div>
       </footer>

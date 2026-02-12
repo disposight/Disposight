@@ -47,7 +47,7 @@ class SignalSourceOut(BaseModel):
 
 class SignalAnalysisOut(BaseModel):
     event_breakdown: str
-    itad_impact: str
+    asset_impact: str
     company_context: str
     asset_opportunity: str
     opportunity_score: int

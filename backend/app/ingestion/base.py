@@ -52,7 +52,7 @@ class BaseCollector(ABC):
                     dup_count += 1
                     continue
 
-                # Critical filter: 100+ devices potential?
+                # Critical filter: 100+ estimated assets potential?
                 employees = item.get("employees_affected")
                 event_type = item.get("event_type", "unknown")
                 multiplier = DEVICE_MULTIPLIERS.get(event_type, 1.0)

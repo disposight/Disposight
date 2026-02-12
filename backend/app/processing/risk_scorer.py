@@ -1,3 +1,4 @@
+import math
 from datetime import datetime, timedelta, timezone
 
 import structlog
@@ -23,8 +24,8 @@ async def update_company_risk_score(db: AsyncSession, company_id) -> int:
     if not company:
         return 0
 
-    # Get signals from last 90 days
-    cutoff = datetime.now(timezone.utc) - timedelta(days=90)
+    # Get signals from last 60 days
+    cutoff = datetime.now(timezone.utc) - timedelta(days=60)
     result = await db.execute(
         select(Signal)
         .where(Signal.company_id == company_id, Signal.created_at >= cutoff)
@@ -46,7 +47,7 @@ async def update_company_risk_score(db: AsyncSession, company_id) -> int:
 
     for signal in signals:
         age_days = max(1, (now - signal.created_at).days)
-        time_decay = max(0.3, 1.0 - (age_days / 90))
+        time_decay = max(0.1, math.exp(-age_days / 21))
 
         category_weight = CATEGORY_WEIGHTS.get(signal.signal_category, 0.5)
         weight = time_decay * category_weight
@@ -72,7 +73,7 @@ async def update_company_risk_score(db: AsyncSession, company_id) -> int:
 
     if len(recent_signals) > len(older_signals):
         trend = "rising"
-    elif len(recent_signals) < len(older_signals) and len(recent_signals) == 0:
+    elif len(recent_signals) < len(older_signals):
         trend = "declining"
     else:
         trend = "stable"
