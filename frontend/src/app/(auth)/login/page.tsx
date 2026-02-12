@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase";
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -24,6 +25,12 @@ export default function LoginPage() {
       setError(error.message);
       setLoading(false);
       return;
+    }
+
+    if (rememberMe) {
+      sessionStorage.setItem("disposight_remember", "1");
+    } else {
+      sessionStorage.setItem("disposight_session_only", "1");
     }
 
     router.push("/dashboard");
@@ -79,6 +86,19 @@ export default function LoginPage() {
               }}
             />
           </div>
+
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="rounded"
+              style={{ accentColor: "var(--accent)" }}
+            />
+            <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+              Remember me
+            </span>
+          </label>
 
           {error && (
             <p className="text-xs" style={{ color: "var(--critical)" }}>{error}</p>
