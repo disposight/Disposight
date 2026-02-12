@@ -56,5 +56,8 @@ class Settings(BaseSettings):
     # Firecrawl
     firecrawl_api_key: str = ""
 
+    # Admin
+    admin_emails: str = ""  # Comma-separated list of admin email addresses
+
 
 settings = Settings()

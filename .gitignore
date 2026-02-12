@@ -38,3 +38,6 @@ htmlcov/
 
 # Build
 *.log
+
+# Claude Code project instructions (contains infrastructure details)
+CLAUDE.md

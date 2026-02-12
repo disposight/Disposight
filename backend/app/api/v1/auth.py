@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 
 from app.api.v1.deps import CurrentUserId, DbSession
+from app.config import settings
 from app.models import Tenant, User
 from app.plan_limits import get_plan_limits
 from app.rate_limit import limiter
@@ -86,6 +87,12 @@ async def get_me(request: Request, user_id: CurrentUserId, db: DbSession):
             await db.flush()
 
     plan = tenant.plan if tenant else "free"
+
+    # Admin override: always grant full access
+    admin_emails = {e.strip() for e in settings.admin_emails.split(",") if e.strip()}
+    if user.email in admin_emails:
+        plan = "pro"
+
     limits = get_plan_limits(plan)
 
     return {
