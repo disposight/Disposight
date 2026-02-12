@@ -42,6 +42,20 @@ const categoryTips: Record<string, string> = {
   restructuring: "Restructuring — divisions closing, assets redistributed",
 };
 
+function timeAgo(dateStr: string): string {
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  const diffMs = now - then;
+  const mins = Math.floor(diffMs / 60_000);
+  if (mins < 60) return `${Math.max(1, mins)}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return `${days}d ago`;
+  const months = Math.floor(days / 30);
+  return `${months}mo ago`;
+}
+
 interface OpportunityCardProps {
   opportunity: Opportunity;
   onWatch?: (companyId: string) => void;
@@ -122,6 +136,14 @@ export function OpportunityCard({
                     <span className="text-xs" style={{ color: "var(--text-muted)" }}>
                       {opp.headquarters_state}
                     </span>
+                  )}
+                  {opp.latest_signal_at && (
+                    <>
+                      <span className="text-xs" style={{ color: "var(--text-muted)" }}>·</span>
+                      <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+                        Detected {timeAgo(opp.latest_signal_at)}
+                      </span>
+                    </>
                   )}
                 </div>
               </div>
