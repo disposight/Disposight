@@ -90,10 +90,12 @@ export default function OpportunityDetailPage() {
     return <p style={{ color: "var(--text-muted)" }}>Deal not found</p>;
   }
 
-  const isFresh = Date.now() - new Date(opp.latest_signal_at).getTime() < 7 * 86_400_000;
-  const isHotDealGated = isTrial && opp.deal_score >= 70 && isFresh;
+  const ageMs = Date.now() - new Date(opp.latest_signal_at).getTime();
+  const isHotDeal = opp.deal_score >= 70 && ageMs < 7 * 86_400_000;
+  const isFreshDeal = ageMs < 5 * 86_400_000;
+  const isGated = isTrial && (isHotDeal || isFreshDeal);
 
-  if (isHotDealGated) {
+  if (isGated) {
     return (
       <PlanGate>
         <div className="space-y-6 max-w-4xl">
@@ -113,11 +115,12 @@ export default function OpportunityDetailPage() {
               <DealScoreBadge score={opp.deal_score} bandLabel={opp.score_band_label} size="lg" />
             </div>
             <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
-              High-Priority Deal
+              Premium Deal
             </h2>
             <p className="text-sm max-w-md mx-auto" style={{ color: "var(--text-secondary)" }}>
               This deal scored <strong>{opp.deal_score}</strong> and is classified as{" "}
-              <strong>{opp.score_band_label}</strong>. Upgrade your plan to access full deal
+              <strong>{opp.score_band_label}</strong>. Fresh and high-priority deals are
+              available exclusively to Professional subscribers. Upgrade to access full deal
               intelligence including company details, AI assessments, and signal evidence.
             </p>
 
