@@ -3,13 +3,15 @@
 Processes raw signals through: entity extraction → classification → scoring → correlation.
 """
 
+from datetime import timedelta
+
 import structlog
-from sqlalchemy import select
+from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import RawSignal, Signal
 from app.processing.device_filter import estimate_devices
-from app.processing.entity_extractor import extract_entities, find_or_create_company, _clean_llm_value
+from app.processing.entity_extractor import extract_entities, find_or_create_company, _clean_llm_value, validate_state_code
 from app.processing.risk_scorer import update_company_risk_score
 from app.processing.signal_classifier import classify_signal
 from app.email.sender import match_and_send_realtime_alerts
@@ -61,6 +63,7 @@ async def process_pending_signals(db: AsyncSession) -> dict:
 
     processed = 0
     errors = 0
+    dedup_count = 0
     companies_to_update = set()
 
     for raw in raw_signals:
@@ -99,12 +102,45 @@ async def process_pending_signals(db: AsyncSession) -> dict:
             if not employees and company.employee_count:
                 employees = company.employee_count
 
-            # Cap employees for SEC EDGAR restructuring signals —
-            # LLM often extracts total company headcount, not affected employees
+            # Cap employees — LLM often extracts total company headcount
+            if employees and employees > 50_000:
+                logger.warning(
+                    "pipeline.employee_count_capped",
+                    raw_signal_id=str(raw.id),
+                    original=employees,
+                    capped_at=50_000,
+                )
+                employees = 50_000
+            # Extra cap for SEC EDGAR restructuring signals
             if raw.source_type == "sec_edgar" and signal_type == "restructuring" and employees and employees > 5000:
                 employees = min(employees, 5000)
 
             device_estimate = estimate_devices(signal_type, employees)
+
+            # Step 5b: Dedup check — skip if same company+type within 2-day window
+            window_start = raw.created_at - timedelta(days=2)
+            window_end = raw.created_at + timedelta(days=2)
+            existing = await db.execute(
+                select(Signal.id).where(
+                    and_(
+                        Signal.company_id == company.id,
+                        Signal.signal_type == signal_type,
+                        Signal.source_published_at >= window_start,
+                        Signal.source_published_at <= window_end,
+                    )
+                ).limit(1)
+            )
+            if existing.scalar_one_or_none() is not None:
+                raw.processing_status = "discarded"
+                raw.discard_reason = "duplicate_signal"
+                dedup_count += 1
+                logger.info(
+                    "pipeline.duplicate_skipped",
+                    raw_signal_id=str(raw.id),
+                    company_id=str(company.id),
+                    signal_type=signal_type,
+                )
+                continue
 
             # Step 6: Create processed signal
             signal = Signal(
@@ -120,7 +156,7 @@ async def process_pending_signals(db: AsyncSession) -> dict:
                 source_url=raw.source_url,
                 source_published_at=raw.created_at,
                 location_city=_clean_llm_value(entities.get("location_city")),
-                location_state=_clean_llm_value(entities.get("location_state")),
+                location_state=validate_state_code(_clean_llm_value(entities.get("location_state"))),
                 affected_employees=employees,
                 device_estimate=device_estimate,
             )
@@ -174,7 +210,8 @@ async def process_pending_signals(db: AsyncSession) -> dict:
         "pipeline.batch_complete",
         processed=processed,
         errors=errors,
+        duplicates_skipped=dedup_count,
         companies_updated=len(companies_to_update),
     )
 
-    return {"processed": processed, "errors": errors}
+    return {"processed": processed, "errors": errors, "duplicates_skipped": dedup_count}

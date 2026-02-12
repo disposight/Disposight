@@ -39,6 +39,54 @@ def test_entity_normalization():
     assert normalize_company_name("Microsoft Corp.") == "microsoft"
 
 
+def test_device_estimate_capped_at_10000():
+    # A huge layoff should be capped at 10,000 devices
+    assert estimate_devices("layoff", 20000) == 10_000
+    assert estimate_devices("facility_shutdown", 10000) == 10_000  # 10000 * 2.0 = 20000 → capped
+
+
+def test_device_estimate_not_capped_when_below():
+    assert estimate_devices("layoff", 100) == 150  # 100 * 1.5 = 150, below cap
+    assert estimate_devices("bankruptcy_ch7", 3000) == 9000  # 3000 * 3.0 = 9000, below cap
+
+
+def test_state_code_validation():
+    from app.processing.entity_extractor import validate_state_code
+
+    assert validate_state_code("CA") == "CA"
+    assert validate_state_code("ny") == "NY"  # case insensitive
+    assert validate_state_code("WA") == "WA"
+    assert validate_state_code("DC") == "DC"
+    assert validate_state_code("PR") == "PR"
+    assert validate_state_code(None) is None
+    assert validate_state_code("T3") is None
+    assert validate_state_code("XX") is None
+    assert validate_state_code("") is None
+
+
+def test_rejected_company_names():
+    from app.processing.entity_extractor import _is_valid_company_name
+
+    assert _is_valid_company_name("Retail") is False
+    assert _is_valid_company_name("Company Name Unknown") is False
+    assert _is_valid_company_name("Unknown") is False
+    assert _is_valid_company_name("multiple") is False
+    assert _is_valid_company_name("placeholder") is False
+    assert _is_valid_company_name("TBA") is False
+
+
+def test_short_name_allowlist():
+    from app.processing.entity_extractor import _is_valid_company_name
+
+    assert _is_valid_company_name("HP") is True
+    assert _is_valid_company_name("3M") is True
+    assert _is_valid_company_name("GE") is True
+    assert _is_valid_company_name("GM") is True
+    # Too short and not in allowlist
+    assert _is_valid_company_name("AB") is False
+    assert _is_valid_company_name("X") is False
+
+
 def test_rule_based_classification():
     from app.processing.signal_classifier import _rule_based_classification
 

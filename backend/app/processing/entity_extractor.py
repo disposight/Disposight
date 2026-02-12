@@ -52,13 +52,41 @@ _REJECTED_NAMES = frozenset({
     "unknown", "n a", "na", "null", "none", "tbd", "unnamed", "test",
     "company", "the company", "the", "undisclosed", "not available",
     "not specified", "various", "confidential", "redacted",
+    "retail", "company name unknown", "multiple", "several companies",
+    "unidentified", "tba", "no company", "placeholder",
 })
+
+# Legitimate 2-character company names that bypass the min-length check
+_ALLOWED_SHORT_NAMES = frozenset({"hp", "3m", "ge", "gm", "bp", "at"})
+
+# Valid US state/territory codes
+VALID_US_STATES = frozenset({
+    "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA",
+    "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD",
+    "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ",
+    "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC",
+    "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY",
+    "DC", "PR", "VI", "GU", "AS", "MP",
+})
+
+
+def validate_state_code(state: str | None) -> str | None:
+    """Return the state code if valid, None otherwise."""
+    if state is None:
+        return None
+    state = state.strip().upper()
+    if state in VALID_US_STATES:
+        return state
+    logger.warning("entity_extractor.invalid_state_code", state=state)
+    return None
 
 
 def _is_valid_company_name(name: str) -> bool:
     """Return True if name is a meaningful, real company name."""
     normalized = normalize_company_name(name)
-    if not normalized or len(normalized) < 2:
+    if not normalized:
+        return False
+    if len(normalized) < 3 and normalized not in _ALLOWED_SHORT_NAMES:
         return False
     if normalized in _REJECTED_NAMES:
         return False
@@ -87,7 +115,7 @@ async def find_or_create_company(db: AsyncSession, name: str, **kwargs) -> Compa
         name=name.strip(),
         normalized_name=normalized,
         headquarters_city=_clean_llm_value(kwargs.get("city")),
-        headquarters_state=_clean_llm_value(kwargs.get("state")),
+        headquarters_state=validate_state_code(_clean_llm_value(kwargs.get("state"))),
     )
     db.add(company)
     await db.flush()

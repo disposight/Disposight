@@ -39,7 +39,17 @@ def estimate_devices(event_type: str, employees_affected: int | None) -> int | N
         return None
 
     multiplier = DEVICE_MULTIPLIERS.get(event_type, 1.0)
-    return int(employees_affected * multiplier)
+    estimate = int(employees_affected * multiplier)
+    if estimate > 10_000:
+        logger.warning(
+            "device_filter.estimate_capped",
+            event_type=event_type,
+            employees=employees_affected,
+            raw_estimate=estimate,
+            capped_at=10_000,
+        )
+        return 10_000
+    return estimate
 
 
 def passes_device_filter(event_type: str, employees_affected: int | None) -> bool:
