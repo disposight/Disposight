@@ -62,8 +62,8 @@ export const api = {
     return apiFetch<SignalListResponse>(`/signals${qs}`);
   },
   getSignal: (id: string) => apiFetch<Signal>(`/signals/${id}`),
-  getSignalAnalysis: (id: string, forceRefresh?: boolean) =>
-    apiFetch<SignalAnalysis>(`/signals/${id}/analysis${forceRefresh ? "?force_refresh=true" : ""}`),
+  getSignalAnalysis: (id: string) =>
+    apiFetch<SignalAnalysis>(`/signals/${id}/analysis`),
 
   // Companies
   getCompanies: (params?: Record<string, string>) => {

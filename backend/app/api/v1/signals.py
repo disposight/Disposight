@@ -111,7 +111,6 @@ async def get_signal_analysis(
     signal_id: UUID,
     db: DbSession,
     tp: TenantPlan,
-    force_refresh: bool = Query(False),
 ):
     # Enforce daily analysis cap via Redis
     if tp.limits.max_signal_analyses_per_day is not None:
@@ -167,7 +166,7 @@ async def get_signal_analysis(
         company=company,
         raw_text=raw_text,
         correlated_signals=correlated,
-        force_refresh=force_refresh,
+        force_refresh=False,
     )
 
     # Persist cache update

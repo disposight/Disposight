@@ -76,15 +76,6 @@ export default function SignalDrilldownPage() {
       .finally(() => setAnalysisLoading(false));
   }, [signalId]);
 
-  const handleRefresh = () => {
-    setAnalysisLoading(true);
-    setAnalysisError(null);
-    api
-      .getSignalAnalysis(signalId, true)
-      .then(setAnalysis)
-      .catch((err) => setAnalysisError(err.message || "Failed to generate analysis"))
-      .finally(() => setAnalysisLoading(false));
-  };
 
   if (loading) {
     return (
@@ -253,9 +244,6 @@ export default function SignalDrilldownPage() {
           ) : analysisError ? (
             <div className="p-4 rounded-lg" style={{ backgroundColor: "var(--bg-elevated)" }}>
               <p className="text-sm" style={{ color: "var(--critical)" }}>{analysisError}</p>
-              <button onClick={handleRefresh} className="mt-2 px-3 py-1.5 rounded text-xs font-medium" style={{ backgroundColor: "var(--accent)", color: "white" }}>
-                Retry
-              </button>
             </div>
           ) : analysis ? (
             <div className="space-y-6">
@@ -324,13 +312,10 @@ export default function SignalDrilldownPage() {
                 </div>
               )}
 
-              <div className="flex items-center justify-between pt-4" style={{ borderTop: "1px solid var(--border-default)" }}>
+              <div className="pt-4" style={{ borderTop: "1px solid var(--border-default)" }}>
                 <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-                  {analysis.cached ? "Cached --- " : ""}Generated {formatDistanceToNow(new Date(analysis.generated_at), { addSuffix: true })}
+                  Generated {formatDistanceToNow(new Date(analysis.generated_at), { addSuffix: true })}
                 </span>
-                <button onClick={handleRefresh} disabled={analysisLoading} className="px-3 py-1.5 rounded text-xs font-medium transition-colors disabled:opacity-50" style={{ backgroundColor: "var(--bg-elevated)", color: "var(--text-secondary)", border: "1px solid var(--border-default)" }}>
-                  Refresh Analysis
-                </button>
               </div>
             </div>
           ) : null}
