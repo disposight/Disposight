@@ -19,6 +19,16 @@ class AuthCallbackRequest(BaseModel):
     email: str
     full_name: str | None = None
     tenant_name: str | None = None
+    company_name: str | None = None
+    job_title: str | None = None
+    referral_source: str | None = None
+
+
+class ProfileUpdateRequest(BaseModel):
+    company_name: str | None = None
+    job_title: str | None = None
+    referral_source: str | None = None
+    full_name: str | None = None
 
 
 class AuthCallbackResponse(BaseModel):
@@ -59,6 +69,9 @@ async def auth_callback(request: Request, body: AuthCallbackRequest, user_id: Cu
         tenant_id=tenant.id,
         email=body.email,
         full_name=body.full_name,
+        company_name=body.company_name,
+        job_title=body.job_title,
+        referral_source=body.referral_source,
         role="owner",
     )
     db.add(user)
@@ -99,6 +112,9 @@ async def get_me(request: Request, user_id: CurrentUserId, db: DbSession):
         "id": str(user.id),
         "email": user.email,
         "full_name": user.full_name,
+        "company_name": user.company_name,
+        "job_title": user.job_title,
+        "referral_source": user.referral_source,
         "role": user.role,
         "tenant_id": str(user.tenant_id),
         "tenant_name": tenant.name if tenant else None,
@@ -114,4 +130,32 @@ async def get_me(request: Request, user_id: CurrentUserId, db: DbSession):
             "csv_export": limits.csv_export,
             "team_pipeline": limits.team_pipeline,
         },
+    }
+
+
+@router.patch("/profile")
+@limiter.limit("10/minute")
+async def update_profile(request: Request, body: ProfileUpdateRequest, user_id: CurrentUserId, db: DbSession):
+    """Update the current user's profile fields."""
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if body.full_name is not None:
+        user.full_name = body.full_name
+    if body.company_name is not None:
+        user.company_name = body.company_name
+    if body.job_title is not None:
+        user.job_title = body.job_title
+    if body.referral_source is not None:
+        user.referral_source = body.referral_source
+
+    await db.flush()
+
+    return {
+        "id": str(user.id),
+        "full_name": user.full_name,
+        "company_name": user.company_name,
+        "job_title": user.job_title,
+        "referral_source": user.referral_source,
     }

@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { api, type PlanLimitsInfo, type UserProfile } from "@/lib/api";
 import { createClient } from "@/lib/supabase";
+import { CompleteProfileModal } from "@/components/dashboard/complete-profile-modal";
 
 interface PlanContextValue {
   plan: string | null;
@@ -33,6 +34,7 @@ const PlanContext = createContext<PlanContextValue>({
 export function PlanProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   useEffect(() => {
     async function init() {
@@ -67,6 +69,13 @@ export function PlanProvider({ children }: { children: ReactNode }) {
     init();
   }, []);
 
+  // Show profile completion modal for users missing company_name (e.g. OAuth signups)
+  useEffect(() => {
+    if (!loading && user && !user.company_name) {
+      setShowProfileModal(true);
+    }
+  }, [loading, user]);
+
   const plan = user?.plan ?? null;
   const isPaid = plan !== null && plan !== "free";
   const isTrial = plan === "trialing";
@@ -83,6 +92,9 @@ export function PlanProvider({ children }: { children: ReactNode }) {
 
   return (
     <PlanContext.Provider value={{ plan, loading, isPaid, isTrial, isStarter, isPro, trialEndsAt, daysLeft, user, planLimits }}>
+      {showProfileModal && (
+        <CompleteProfileModal onComplete={() => setShowProfileModal(false)} />
+      )}
       {children}
     </PlanContext.Provider>
   );

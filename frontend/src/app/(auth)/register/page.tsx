@@ -6,10 +6,22 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { api } from "@/lib/api";
 
+const REFERRAL_OPTIONS = [
+  "Google Search",
+  "LinkedIn",
+  "Referral / Word of mouth",
+  "Conference / Event",
+  "Podcast",
+  "Other",
+];
+
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [companyName, setCompanyName] = useState("");
+  const [jobTitle, setJobTitle] = useState("");
+  const [referralSource, setReferralSource] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -40,12 +52,24 @@ export default function RegisterPage() {
 
     // Create tenant + user via our API
     try {
-      await api.authCallback({ email, full_name: fullName });
+      await api.authCallback({
+        email,
+        full_name: fullName || undefined,
+        company_name: companyName || undefined,
+        job_title: jobTitle || undefined,
+        referral_source: referralSource || undefined,
+      });
     } catch {
       // Non-fatal: tenant will be created on first dashboard load
     }
 
     router.push("/dashboard");
+  };
+
+  const inputStyle = {
+    backgroundColor: "var(--bg-surface)",
+    border: "1px solid var(--border-default)",
+    color: "var(--text-primary)",
   };
 
   return (
@@ -84,7 +108,7 @@ export default function RegisterPage() {
           Sign up with Google
         </button>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 my-4">
           <div className="flex-1 h-px" style={{ backgroundColor: "var(--border-default)" }} />
           <span className="text-xs" style={{ color: "var(--text-muted)" }}>or</span>
           <div className="flex-1 h-px" style={{ backgroundColor: "var(--border-default)" }} />
@@ -98,11 +122,30 @@ export default function RegisterPage() {
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               className="w-full mt-1 px-3 py-2 rounded-md text-sm outline-none"
-              style={{
-                backgroundColor: "var(--bg-surface)",
-                border: "1px solid var(--border-default)",
-                color: "var(--text-primary)",
-              }}
+              style={inputStyle}
+            />
+          </div>
+
+          <div>
+            <label className="text-xs" style={{ color: "var(--text-muted)" }}>Company Name</label>
+            <input
+              type="text"
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+              className="w-full mt-1 px-3 py-2 rounded-md text-sm outline-none"
+              style={inputStyle}
+            />
+          </div>
+
+          <div>
+            <label className="text-xs" style={{ color: "var(--text-muted)" }}>Job Title</label>
+            <input
+              type="text"
+              value={jobTitle}
+              onChange={(e) => setJobTitle(e.target.value)}
+              placeholder="e.g. Sales Director, VP Operations"
+              className="w-full mt-1 px-3 py-2 rounded-md text-sm outline-none"
+              style={inputStyle}
             />
           </div>
 
@@ -114,11 +157,7 @@ export default function RegisterPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
               className="w-full mt-1 px-3 py-2 rounded-md text-sm outline-none"
-              style={{
-                backgroundColor: "var(--bg-surface)",
-                border: "1px solid var(--border-default)",
-                color: "var(--text-primary)",
-              }}
+              style={inputStyle}
             />
           </div>
 
@@ -131,12 +170,23 @@ export default function RegisterPage() {
               required
               minLength={8}
               className="w-full mt-1 px-3 py-2 rounded-md text-sm outline-none"
-              style={{
-                backgroundColor: "var(--bg-surface)",
-                border: "1px solid var(--border-default)",
-                color: "var(--text-primary)",
-              }}
+              style={inputStyle}
             />
+          </div>
+
+          <div>
+            <label className="text-xs" style={{ color: "var(--text-muted)" }}>How did you hear about us?</label>
+            <select
+              value={referralSource}
+              onChange={(e) => setReferralSource(e.target.value)}
+              className="w-full mt-1 px-3 py-2 rounded-md text-sm outline-none"
+              style={inputStyle}
+            >
+              <option value="">Select one</option>
+              {REFERRAL_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
           </div>
 
           {error && (

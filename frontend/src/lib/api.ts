@@ -159,9 +159,14 @@ export const api = {
 
   // Auth
   getMe: () => apiFetch<UserProfile>("/auth/me"),
-  authCallback: (data: { email: string; full_name?: string }) =>
+  authCallback: (data: { email: string; full_name?: string; company_name?: string; job_title?: string; referral_source?: string }) =>
     apiFetch<AuthCallbackResponse>("/auth/callback", {
       method: "POST",
+      body: JSON.stringify(data),
+    }),
+  updateProfile: (data: { full_name?: string; company_name?: string; job_title?: string; referral_source?: string }) =>
+    apiFetch<{ id: string; full_name: string | null; company_name: string | null; job_title: string | null; referral_source: string | null }>("/auth/profile", {
+      method: "PATCH",
       body: JSON.stringify(data),
     }),
 };
@@ -309,6 +314,9 @@ export interface UserProfile {
   id: string;
   email: string;
   full_name: string | null;
+  company_name: string | null;
+  job_title: string | null;
+  referral_source: string | null;
   role: string;
   tenant_id: string;
   tenant_name: string | null;
