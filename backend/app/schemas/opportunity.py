@@ -44,6 +44,8 @@ class OpportunityOut(BaseModel):
     source_diversity: int
     is_watched: bool = False
     top_factors: list[str] = []
+    has_contacts: bool = False
+    contact_count: int = 0
 
     model_config = {"from_attributes": True}
 
@@ -63,8 +65,10 @@ class OpportunityDetailOut(OpportunityOut):
     avg_severity: float
     recommended_actions: list[str] | None = None
     asset_opportunity: str | None = None
+    likely_asset_types: list[dict] = []
     score_breakdown: ScoreBreakdownOut | None = None
     signal_velocity: float = 0.0
+    domain: str | None = None
 
 
 class CommandCenterStats(BaseModel):

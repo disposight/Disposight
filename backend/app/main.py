@@ -94,7 +94,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    from app.api.v1 import auth, companies, signals, dashboard, watchlists, alerts, billing, pipelines, opportunities, settings as settings_router
+    from app.api.v1 import auth, companies, signals, dashboard, watchlists, alerts, billing, pipelines, opportunities, contacts, settings as settings_router
 
     app.include_router(auth.router, prefix=settings.api_prefix)
     app.include_router(companies.router, prefix=settings.api_prefix)
@@ -105,6 +105,7 @@ def create_app() -> FastAPI:
     app.include_router(billing.router, prefix=settings.api_prefix)
     app.include_router(pipelines.router, prefix=settings.api_prefix)
     app.include_router(opportunities.router, prefix=settings.api_prefix)
+    app.include_router(contacts.router, prefix=settings.api_prefix)
     app.include_router(settings_router.router, prefix=settings.api_prefix)
 
     @app.get("/health")

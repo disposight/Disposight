@@ -2,9 +2,9 @@ import stripe
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
-from app.api.v1.deps import DbSession, TenantId
+from app.api.v1.deps import CurrentUserId, DbSession, TenantId
 from app.config import settings
-from app.models import Subscription, Tenant
+from app.models import Subscription, Tenant, User
 from app.rate_limit import limiter
 
 router = APIRouter(prefix="/billing", tags=["billing"])
@@ -40,7 +40,7 @@ class CheckoutRequest(BaseModel):
 
 @router.post("/checkout")
 @limiter.limit("5/minute")
-async def create_checkout(request: Request, body: CheckoutRequest, db: DbSession, tenant_id: TenantId):
+async def create_checkout(request: Request, body: CheckoutRequest, db: DbSession, tenant_id: TenantId, user_id: CurrentUserId):
     if not settings.stripe_secret_key:
         raise HTTPException(status_code=503, detail="Billing not configured")
 
@@ -50,7 +50,10 @@ async def create_checkout(request: Request, body: CheckoutRequest, db: DbSession
 
     # Get or create Stripe customer
     if not tenant.stripe_customer_id:
+        user = await db.get(User, user_id)
         customer = stripe.Customer.create(
+            email=user.email if user else None,
+            name=user.full_name if user else None,
             metadata={"tenant_id": str(tenant_id)},
         )
         tenant.stripe_customer_id = customer.id
@@ -70,7 +73,7 @@ async def create_checkout(request: Request, body: CheckoutRequest, db: DbSession
 
 @router.post("/subscribe")
 @limiter.limit("5/minute")
-async def create_subscription(request: Request, body: CheckoutRequest, db: DbSession, tenant_id: TenantId):
+async def create_subscription(request: Request, body: CheckoutRequest, db: DbSession, tenant_id: TenantId, user_id: CurrentUserId):
     if not settings.stripe_secret_key:
         raise HTTPException(status_code=503, detail="Billing not configured")
 
@@ -80,7 +83,10 @@ async def create_subscription(request: Request, body: CheckoutRequest, db: DbSes
 
     # Get or create Stripe customer
     if not tenant.stripe_customer_id:
+        user = await db.get(User, user_id)
         customer = stripe.Customer.create(
+            email=user.email if user else None,
+            name=user.full_name if user else None,
             metadata={"tenant_id": str(tenant_id)},
         )
         tenant.stripe_customer_id = customer.id

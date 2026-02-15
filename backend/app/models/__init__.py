@@ -9,6 +9,8 @@ from app.models.alert import Alert
 from app.models.alert_history import AlertHistory
 from app.models.signal_source import SignalSource
 from app.models.subscription import Subscription
+from app.models.contact import Contact
+from app.models.email_pattern import EmailPattern
 
 __all__ = [
     "Base",
@@ -22,4 +24,6 @@ __all__ = [
     "AlertHistory",
     "SignalSource",
     "Subscription",
+    "Contact",
+    "EmailPattern",
 ]

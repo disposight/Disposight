@@ -10,7 +10,7 @@ from sqlalchemy import case, distinct, func, select
 from sqlalchemy.orm import aliased
 
 from app.api.v1.deps import CurrentUserId, DbSession, TenantId, TenantPlan
-from app.models import Company, Signal, Watchlist
+from app.models import Company, Contact, Signal, Watchlist
 from app.plan_limits import raise_plan_limit
 from app.processing.deal_scorer import DealScoreResult, compute_deal_score
 from app.processing.disposition import get_disposition_window
@@ -134,6 +134,17 @@ async def _build_opportunities(
     )
     watched_ids = {r[0] for r in wl_result.all()}
 
+    # Batch-query contact counts for all companies in results
+    company_ids = [row.company_id for row in rows]
+    contact_count_map: dict = {}
+    if company_ids:
+        cc_result = await db.execute(
+            select(Contact.company_id, func.count(Contact.id))
+            .where(Contact.company_id.in_(company_ids))
+            .group_by(Contact.company_id)
+        )
+        contact_count_map = dict(cc_result.all())
+
     # Compute deal scores and build opportunity objects
     opportunities: list[OpportunityOut] = []
     for row in rows:
@@ -184,6 +195,8 @@ async def _build_opportunities(
                 source_diversity=int(row.source_diversity or 1),
                 is_watched=row.company_id in watched_ids,
                 top_factors=deal_result.top_factors,
+                has_contacts=contact_count_map.get(row.company_id, 0) > 0,
+                contact_count=contact_count_map.get(row.company_id, 0),
             )
         )
 
@@ -448,6 +461,7 @@ async def get_opportunity(
     cached_analysis = (best_signal.metadata_ or {}).get("analysis_cache", {})
     recommended_actions = cached_analysis.get("recommended_actions")
     asset_opportunity = cached_analysis.get("asset_opportunity")
+    likely_asset_types = cached_analysis.get("likely_asset_types", [])
 
     # Log distress pattern
     _log_distress_pattern(company, deal_result, signals, signal_velocity, days_span)
@@ -463,6 +477,12 @@ async def get_opportunity(
     # Truncate score breakdown for non-pro plans
     if tp.limits.score_breakdown_mode == "compact" and score_breakdown:
         score_breakdown.factors = score_breakdown.factors[:3]
+
+    # Get contact count for this company
+    cc_result = await db.execute(
+        select(func.count(Contact.id)).where(Contact.company_id == company_id)
+    )
+    contact_count = cc_result.scalar() or 0
 
     return OpportunityDetailOut(
         company_id=company.id,
@@ -486,11 +506,15 @@ async def get_opportunity(
         source_diversity=len(source_names),
         is_watched=is_watched,
         top_factors=deal_result.top_factors,
+        has_contacts=contact_count > 0,
+        contact_count=contact_count,
         signals=signal_outs,
         avg_confidence=round(avg_confidence, 1),
         avg_severity=round(avg_severity, 1),
         recommended_actions=recommended_actions,
         asset_opportunity=asset_opportunity,
+        likely_asset_types=likely_asset_types,
         score_breakdown=score_breakdown,
         signal_velocity=signal_velocity,
+        domain=company.domain,
     )

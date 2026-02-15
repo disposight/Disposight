@@ -52,6 +52,7 @@ class SignalAnalysisOut(BaseModel):
     asset_opportunity: str
     opportunity_score: int
     recommended_actions: list[str]
+    likely_asset_types: list[dict] = []
     correlated_signals_summary: str | None = None
     sources: list[SignalSourceOut] = []
     generated_at: str

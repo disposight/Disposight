@@ -19,6 +19,7 @@ class PlanLimits:
     score_breakdown_mode: str = "compact"  # "compact" (top 3) or "full" (all 8)
     csv_export: bool = False
     team_pipeline: bool = False
+    contacts_per_day: int | None = None  # None = unlimited, 0 = blocked
 
 
 PLAN_LIMITS: dict[str, PlanLimits] = {
@@ -31,6 +32,7 @@ PLAN_LIMITS: dict[str, PlanLimits] = {
         score_breakdown_mode="compact",
         csv_export=False,
         team_pipeline=False,
+        contacts_per_day=0,
     ),
     "trialing": PlanLimits(
         max_watchlist_companies=50,
@@ -41,6 +43,7 @@ PLAN_LIMITS: dict[str, PlanLimits] = {
         score_breakdown_mode="compact",
         csv_export=False,
         team_pipeline=False,
+        contacts_per_day=3,
     ),
     "starter": PlanLimits(
         max_watchlist_companies=200,
@@ -51,6 +54,7 @@ PLAN_LIMITS: dict[str, PlanLimits] = {
         score_breakdown_mode="full",
         csv_export=True,
         team_pipeline=False,
+        contacts_per_day=None,
     ),
     "pro": PlanLimits(
         max_watchlist_companies=200,
@@ -61,6 +65,7 @@ PLAN_LIMITS: dict[str, PlanLimits] = {
         score_breakdown_mode="full",
         csv_export=True,
         team_pipeline=True,
+        contacts_per_day=None,
     ),
 }
 

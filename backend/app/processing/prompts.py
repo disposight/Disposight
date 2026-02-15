@@ -100,7 +100,13 @@ Produce a JSON analysis with these fields:
   "asset_opportunity": "1-2 paragraphs on the specific asset recovery opportunity. Consider facility types (office vs manufacturing vs data center), typical refresh cycles, and urgency of disposition.",
   "opportunity_score": 0-100 integer rating the disposition opportunity (consider volume, urgency, likelihood of surplus, competition),
   "recommended_actions": ["5 specific, actionable next steps for a deal team to pursue this opportunity. Include who to contact, what to propose, and timing."],
+  "likely_asset_types": [
+    {{{{"category": "IT Equipment", "examples": "laptops, desktops, monitors, docking stations", "estimated_volume": "500-800 units"}}}},
+    {{{{"category": "Office Furniture", "examples": "desks, ergonomic chairs, conference tables", "estimated_volume": "200-400 pieces"}}}}
+  ],
   "correlated_signals_summary": "If correlated signals exist, summarize what the multi-source confirmation means for confidence. Otherwise null."
 }}}}
+
+For likely_asset_types: Based on the company's industry, employee count, and event type, list 2-5 categories of physical assets likely available for disposition. Categories include: IT Equipment, Office Furniture, Data Center/Servers, Networking Gear, Phones/Telecom, Vehicles/Fleet, Manufacturing Equipment, Retail Fixtures, Medical Equipment, Warehouse/Logistics, AV Equipment. Include specific item examples and estimated volumes.
 
 Return ONLY valid JSON, no explanation."""

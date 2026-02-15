@@ -219,6 +219,14 @@ export function OpportunityCard({
                   ))}
                 </div>
                 <SourceBadges sources={opp.source_names} />
+                {opp.has_contacts && opp.contact_count > 0 && (
+                  <span
+                    className="px-1.5 py-0.5 rounded text-[10px] font-medium"
+                    style={{ backgroundColor: "rgba(16, 185, 129, 0.15)", color: "var(--accent)" }}
+                  >
+                    {opp.contact_count} Contact{opp.contact_count !== 1 ? "s" : ""}
+                  </span>
+                )}
               </div>
 
               {/* Actions */}

@@ -87,6 +87,7 @@ async def generate_signal_analysis(
     analysis.setdefault("asset_opportunity", "")
     analysis.setdefault("opportunity_score", 50)
     analysis.setdefault("recommended_actions", [])
+    analysis.setdefault("likely_asset_types", [])
     analysis.setdefault("correlated_signals_summary", None if not correlated_signals else analysis.get("correlated_signals_summary"))
 
     # Cache in metadata

@@ -13,13 +13,14 @@ import { PlanGate } from "@/components/dashboard/plan-gate";
 import { UpgradePrompt } from "@/components/dashboard/upgrade-prompt";
 import { getNextAction } from "@/components/dashboard/next-action";
 import { FullScoreBreakdown } from "@/components/dashboard/score-breakdown";
+import { ContactsSection } from "@/components/dashboard/contacts-section";
 import { usePlan } from "@/contexts/plan-context";
 import KineticDotsLoader from "@/components/ui/kinetic-dots-loader";
 
 export default function OpportunityDetailPage() {
   const params = useParams();
   const companyId = params.company_id as string;
-  const { isPro, isTrial } = usePlan();
+  const { isPro, isTrial, isPaid } = usePlan();
   const [opp, setOpp] = useState<OpportunityDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [watchLoading, setWatchLoading] = useState(false);
@@ -299,6 +300,14 @@ export default function OpportunityDetailPage() {
           )}
         </div>
 
+        {/* Decision-Maker Contacts */}
+        <ContactsSection
+          companyId={companyId}
+          companyName={opp.company_name}
+          domain={opp.domain}
+          isPaid={isPaid}
+        />
+
         {/* AI Deal Brief */}
         <div
           className="p-6 rounded-lg"
@@ -325,8 +334,37 @@ export default function OpportunityDetailPage() {
               return <KineticDotsLoader label="AI is analyzing this opportunity" />;
             }
 
+            const assetTypes = opp.likely_asset_types?.length ? opp.likely_asset_types : analysis?.likely_asset_types;
+
             return (
               <>
+                {assetTypes && assetTypes.length > 0 && (
+                  <div className="mb-4">
+                    <h3 className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "var(--text-muted)" }}>
+                      Likely Asset Types
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {assetTypes.map((asset, i) => (
+                        <div
+                          key={i}
+                          className="px-3 py-2 rounded-md"
+                          style={{ backgroundColor: "var(--bg-elevated)", border: "1px solid var(--border-default)" }}
+                        >
+                          <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                            {asset.category}
+                          </p>
+                          <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>
+                            {asset.examples}
+                          </p>
+                          <p className="text-xs mt-0.5 font-mono" style={{ color: "var(--text-muted)" }}>
+                            {asset.estimated_volume}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {assetOpp && (
                   <div className="mb-4">
                     <h3 className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "var(--text-muted)" }}>

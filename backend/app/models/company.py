@@ -32,6 +32,7 @@ class Company(Base):
     risk_trend: Mapped[str] = mapped_column(String(20), server_default="stable")
     enrichment_status: Mapped[str] = mapped_column(String(50), server_default="pending")
     enriched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    contacts_found_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     metadata_: Mapped[dict] = mapped_column("metadata", JSONB, server_default="{}")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -41,3 +42,4 @@ class Company(Base):
     )
 
     signals = relationship("Signal", back_populates="company")
+    contacts = relationship("Contact", back_populates="company", lazy="noload")

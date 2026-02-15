@@ -42,10 +42,10 @@ const appearance: Appearance = {
 };
 
 const plan = {
-  id: "starter",
+  id: "pro",
   name: "Professional",
-  monthly: { price: 199, priceId: "starter" },
-  yearly: { price: 175, total: 2100, savings: 288, priceId: "starter_yearly" },
+  monthly: { price: 199, priceId: "pro" },
+  yearly: { price: 175, total: 2100, savings: 288, priceId: "pro_yearly" },
   features: [
     "All 4 data pipelines",
     "Real-time, daily & weekly alerts",

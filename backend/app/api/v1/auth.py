@@ -92,19 +92,25 @@ async def get_me(request: Request, user_id: CurrentUserId, db: DbSession):
         raise HTTPException(status_code=404, detail="User not found")
     tenant = await db.get(Tenant, user.tenant_id)
 
-    # Auto-expire trial
-    if tenant and tenant.plan == "trialing" and tenant.trial_ends_at:
+    # Admin override: always grant full access (case-insensitive)
+    admin_emails = {e.strip().lower() for e in settings.admin_emails.split(",") if e.strip()}
+    is_admin = user.email and user.email.lower() in admin_emails
+
+    # Auto-expire trial (skip for admins — they always get pro)
+    if not is_admin and tenant and tenant.plan == "trialing" and tenant.trial_ends_at:
         if datetime.now(timezone.utc) > tenant.trial_ends_at:
             tenant.plan = "free"
             tenant.trial_ends_at = None
             await db.flush()
 
-    plan = tenant.plan if tenant else "free"
-
-    # Admin override: always grant full access
-    admin_emails = {e.strip() for e in settings.admin_emails.split(",") if e.strip()}
-    if user.email in admin_emails:
+    if is_admin:
         plan = "pro"
+        # Persist pro in DB so admin access survives backend restarts
+        if tenant and tenant.plan != "pro":
+            tenant.plan = "pro"
+            await db.flush()
+    else:
+        plan = tenant.plan if tenant else "free"
 
     limits = get_plan_limits(plan)
 

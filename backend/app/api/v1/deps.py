@@ -110,9 +110,9 @@ async def get_tenant_info(
         raise HTTPException(status_code=403, detail="Tenant not found")
     plan = tenant.plan or "free"
 
-    # Admin override: always grant full access
-    admin_emails = {e.strip() for e in settings.admin_emails.split(",") if e.strip()}
-    if user.email in admin_emails:
+    # Admin override: always grant full access (case-insensitive)
+    admin_emails = {e.strip().lower() for e in settings.admin_emails.split(",") if e.strip()}
+    if user.email and user.email.lower() in admin_emails:
         plan = "pro"
 
     return TenantInfo(tenant_id=tenant.id, plan=plan, limits=get_plan_limits(plan))

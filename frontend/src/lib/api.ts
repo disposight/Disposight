@@ -149,6 +149,12 @@ export const api = {
     }),
   getPortal: () => apiFetch<{ portal_url: string }>("/billing/portal"),
 
+  // Contacts
+  findContacts: (companyId: string) =>
+    apiFetch<ContactsResponse>(`/contacts/${companyId}/find`, { method: "POST" }),
+  getContacts: (companyId: string) =>
+    apiFetch<ContactsResponse>(`/contacts/${companyId}`),
+
   // Pipelines
   checkNewSignals: (since: string) =>
     apiFetch<{ new_count: number; latest_at: string | null }>(
@@ -214,6 +220,7 @@ export interface SignalAnalysis {
   asset_opportunity: string;
   opportunity_score: number;
   recommended_actions: string[];
+  likely_asset_types: AssetType[];
   correlated_signals_summary: string | null;
   sources: SignalSource[];
   generated_at: string;
@@ -331,6 +338,13 @@ export interface AuthCallbackResponse {
   tenant_slug: string;
 }
 
+// Asset type from AI analysis
+export interface AssetType {
+  category: string;
+  examples: string;
+  estimated_volume: string;
+}
+
 // Score breakdown types
 export interface ScoreFactor {
   name: string;
@@ -371,6 +385,8 @@ export interface Opportunity {
   source_diversity: number;
   is_watched: boolean;
   top_factors: string[];
+  has_contacts: boolean;
+  contact_count: number;
 }
 
 export interface OpportunityListResponse {
@@ -388,8 +404,10 @@ export interface OpportunityDetail extends Opportunity {
   avg_severity: number;
   recommended_actions: string[] | null;
   asset_opportunity: string | null;
+  likely_asset_types: AssetType[];
   score_breakdown: ScoreBreakdown | null;
   signal_velocity: number;
+  domain: string | null;
 }
 
 export interface CommandCenterStats {
@@ -405,4 +423,30 @@ export interface CommandCenterStats {
 
 export interface RevenueSettings {
   price_per_device: number;
+}
+
+// Contact types
+export interface ContactInfo {
+  id: string;
+  company_id: string;
+  first_name: string | null;
+  last_name: string | null;
+  full_name: string | null;
+  title: string | null;
+  seniority_level: string | null;
+  decision_maker_score: number | null;
+  email: string | null;
+  email_status: string;
+  phone: string | null;
+  linkedin_url: string | null;
+  discovery_source: string | null;
+  created_at: string;
+}
+
+export interface ContactsResponse {
+  contacts: ContactInfo[];
+  company_id: string;
+  company_name: string;
+  status: "found" | "none_found" | "no_domain";
+  total: number;
 }
