@@ -9,6 +9,7 @@ import {
   useElements,
 } from "@stripe/react-stripe-js";
 import { api } from "@/lib/api";
+import { usePlan } from "@/contexts/plan-context";
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
@@ -194,6 +195,7 @@ export function UpgradeFlow({
   onComplete: () => void;
   onCancel: () => void;
 }) {
+  const { isTrial } = usePlan();
   const [isYearly, setIsYearly] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -365,7 +367,7 @@ export function UpgradeFlow({
           className="w-full py-2.5 rounded-md text-sm font-medium transition-colors disabled:opacity-50"
           style={{ backgroundColor: "var(--accent)", color: "#fff" }}
         >
-          {loading ? "Loading..." : "Start 3-Day Free Trial"}
+          {loading ? "Loading..." : isTrial ? "Subscribe Now" : "Subscribe"}
         </button>
       </div>
     </div>

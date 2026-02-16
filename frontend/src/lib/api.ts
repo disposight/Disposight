@@ -1,6 +1,8 @@
 import { createClient } from "./supabase";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// API calls use relative URLs — Next.js rewrites proxy them to the backend.
+// This eliminates CORS issues since browser only talks to the same origin.
+const API_URL = "";
 
 export class PlanLimitError extends Error {
   feature: string;
@@ -165,13 +167,13 @@ export const api = {
 
   // Auth
   getMe: () => apiFetch<UserProfile>("/auth/me"),
-  authCallback: (data: { email: string; full_name?: string; company_name?: string; job_title?: string; referral_source?: string }) =>
+  authCallback: (data: { email: string; full_name?: string; company_name?: string; job_title?: string; referral_source?: string; organization_type?: string; primary_goal?: string }) =>
     apiFetch<AuthCallbackResponse>("/auth/callback", {
       method: "POST",
       body: JSON.stringify(data),
     }),
-  updateProfile: (data: { full_name?: string; company_name?: string; job_title?: string; referral_source?: string }) =>
-    apiFetch<{ id: string; full_name: string | null; company_name: string | null; job_title: string | null; referral_source: string | null }>("/auth/profile", {
+  updateProfile: (data: { full_name?: string; company_name?: string; job_title?: string; referral_source?: string; organization_type?: string; primary_goal?: string }) =>
+    apiFetch<{ id: string; full_name: string | null; company_name: string | null; job_title: string | null; referral_source: string | null; organization_type: string | null; primary_goal: string | null }>("/auth/profile", {
       method: "PATCH",
       body: JSON.stringify(data),
     }),
@@ -324,6 +326,8 @@ export interface UserProfile {
   company_name: string | null;
   job_title: string | null;
   referral_source: string | null;
+  organization_type: string | null;
+  primary_goal: string | null;
   role: string;
   tenant_id: string;
   tenant_name: string | null;

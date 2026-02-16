@@ -21,6 +21,8 @@ class User(Base):
     company_name: Mapped[str | None] = mapped_column(String(255))
     job_title: Mapped[str | None] = mapped_column(String(255))
     referral_source: Mapped[str | None] = mapped_column(String(100))
+    organization_type: Mapped[str | None] = mapped_column(String(100))
+    primary_goal: Mapped[str | None] = mapped_column(String(255))
     avatar_url: Mapped[str | None] = mapped_column(Text)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(

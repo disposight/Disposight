@@ -22,6 +22,8 @@ class AuthCallbackRequest(BaseModel):
     company_name: str | None = None
     job_title: str | None = None
     referral_source: str | None = None
+    organization_type: str | None = None
+    primary_goal: str | None = None
 
 
 class ProfileUpdateRequest(BaseModel):
@@ -29,6 +31,8 @@ class ProfileUpdateRequest(BaseModel):
     job_title: str | None = None
     referral_source: str | None = None
     full_name: str | None = None
+    organization_type: str | None = None
+    primary_goal: str | None = None
 
 
 class AuthCallbackResponse(BaseModel):
@@ -72,6 +76,8 @@ async def auth_callback(request: Request, body: AuthCallbackRequest, user_id: Cu
         company_name=body.company_name,
         job_title=body.job_title,
         referral_source=body.referral_source,
+        organization_type=body.organization_type,
+        primary_goal=body.primary_goal,
         role="owner",
     )
     db.add(user)
@@ -97,10 +103,10 @@ async def get_me(request: Request, user_id: CurrentUserId, db: DbSession):
     is_admin = user.email and user.email.lower() in admin_emails
 
     # Auto-expire trial (skip for admins — they always get pro)
+    # Keep trial_ends_at so frontend knows the user already used their trial
     if not is_admin and tenant and tenant.plan == "trialing" and tenant.trial_ends_at:
         if datetime.now(timezone.utc) > tenant.trial_ends_at:
             tenant.plan = "free"
-            tenant.trial_ends_at = None
             await db.flush()
 
     if is_admin:
@@ -121,6 +127,8 @@ async def get_me(request: Request, user_id: CurrentUserId, db: DbSession):
         "company_name": user.company_name,
         "job_title": user.job_title,
         "referral_source": user.referral_source,
+        "organization_type": user.organization_type,
+        "primary_goal": user.primary_goal,
         "role": user.role,
         "tenant_id": str(user.tenant_id),
         "tenant_name": tenant.name if tenant else None,
@@ -155,6 +163,10 @@ async def update_profile(request: Request, body: ProfileUpdateRequest, user_id: 
         user.job_title = body.job_title
     if body.referral_source is not None:
         user.referral_source = body.referral_source
+    if body.organization_type is not None:
+        user.organization_type = body.organization_type
+    if body.primary_goal is not None:
+        user.primary_goal = body.primary_goal
 
     await db.flush()
 
@@ -164,4 +176,6 @@ async def update_profile(request: Request, body: ProfileUpdateRequest, user_id: 
         "company_name": user.company_name,
         "job_title": user.job_title,
         "referral_source": user.referral_source,
+        "organization_type": user.organization_type,
+        "primary_goal": user.primary_goal,
     }

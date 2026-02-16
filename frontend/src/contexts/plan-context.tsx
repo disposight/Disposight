@@ -37,41 +37,63 @@ export function PlanProvider({ children }: { children: ReactNode }) {
   const [showProfileModal, setShowProfileModal] = useState(false);
 
   useEffect(() => {
-    async function init() {
+    const supabase = createClient();
+    let loaded = false;
+
+    async function loadProfile() {
+      if (loaded) return;
+      loaded = true;
+
       try {
         const profile = await api.getMe();
         setUser(profile);
-      } catch (err) {
-        // If getMe fails (403/404), the tenant record may be missing.
-        // Attempt to create it from the Supabase session, then retry.
-        const message = err instanceof Error ? err.message : "";
-        if (message.includes("tenant") || message.includes("not found") || message.includes("403")) {
-          try {
-            const supabase = createClient();
-            const { data: { user: sbUser } } = await supabase.auth.getUser();
-            if (sbUser?.email) {
-              await api.authCallback({
-                email: sbUser.email,
-                full_name: sbUser.user_metadata?.full_name,
-              });
-              // Retry getMe after tenant creation
-              const profile = await api.getMe();
-              setUser(profile);
-            }
-          } catch {
-            // Still failed — user will see free/unauthenticated state
+      } catch {
+        // First call may fail (session not hydrated, missing tenant, etc.)
+        // Try to ensure tenant exists, then retry once.
+        try {
+          const { data: { user: sbUser } } = await supabase.auth.getUser();
+          if (sbUser?.email) {
+            await api.authCallback({
+              email: sbUser.email,
+              full_name: sbUser.user_metadata?.full_name,
+            });
           }
+          const profile = await api.getMe();
+          setUser(profile);
+        } catch {
+          // Still failed — user will see free/unauthenticated state
         }
       } finally {
         setLoading(false);
       }
     }
-    init();
+
+    // Wait for Supabase to parse session from cookies before calling the API.
+    // onAuthStateChange fires INITIAL_SESSION once the session is ready.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (session && !loaded) {
+          loadProfile();
+        } else if (event === "INITIAL_SESSION" && !session) {
+          setLoading(false);
+        }
+      }
+    );
+
+    // Safety fallback: if no auth event fires within 3 seconds, try anyway
+    const timeout = setTimeout(() => {
+      if (!loaded) loadProfile();
+    }, 3000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
-  // Show profile completion modal for users missing company_name (e.g. OAuth signups)
+  // Show profile completion modal for users missing organization_type (e.g. OAuth signups, existing users)
   useEffect(() => {
-    if (!loading && user && !user.company_name) {
+    if (!loading && user && !user.organization_type) {
       setShowProfileModal(true);
     }
   }, [loading, user]);
