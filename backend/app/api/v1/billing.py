@@ -96,11 +96,11 @@ async def create_subscription(request: Request, body: CheckoutRequest, db: DbSes
         items=[{"price": _resolve_price_id(body.price_id) if body.price_id else settings.stripe_starter_price_id}],
         payment_behavior="default_incomplete",
         payment_settings={"save_default_payment_method": "on_subscription"},
-        expand=["latest_invoice.payment_intent"],
+        expand=["latest_invoice.confirmation_secret"],
     )
 
     return {
-        "client_secret": subscription.latest_invoice.payment_intent.client_secret,
+        "client_secret": subscription.latest_invoice.confirmation_secret.client_secret,
         "subscription_id": subscription.id,
     }
 
