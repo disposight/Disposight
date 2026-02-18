@@ -22,11 +22,27 @@ if settings.sentry_dsn:
         environment="production" if not settings.debug else "development",
     )
 
+SENSITIVE_FIELDS = frozenset({
+    "access_token", "refresh_token", "password", "secret",
+    "api_key", "authorization", "stripe_secret_key",
+    "supabase_jwt_secret", "resend_api_key", "openai_api_key",
+})
+
+
+def mask_sensitive_data(logger, method_name, event_dict):
+    """Structlog processor that redacts sensitive fields before logging."""
+    for key in list(event_dict.keys()):
+        if key.lower() in SENSITIVE_FIELDS:
+            event_dict[key] = "***REDACTED***"
+    return event_dict
+
+
 structlog.configure(
     processors=[
         structlog.contextvars.merge_contextvars,
         structlog.processors.add_log_level,
         structlog.processors.TimeStamper(fmt="iso"),
+        mask_sensitive_data,
         structlog.dev.ConsoleRenderer() if settings.debug else structlog.processors.JSONRenderer(),
     ],
     wrapper_class=structlog.make_filtering_bound_logger(0),
@@ -37,6 +53,30 @@ structlog.configure(
 
 
 logger = structlog.get_logger()
+
+
+MAX_BODY_SIZE = 1_048_576  # 1 MB
+BODY_SIZE_EXEMPT_PATHS = frozenset({"/api/v1/billing/webhook"})
+
+
+class RequestBodySizeLimitMiddleware(BaseHTTPMiddleware):
+    """Reject request bodies larger than MAX_BODY_SIZE (1 MB)."""
+
+    async def dispatch(self, request: Request, call_next) -> Response:
+        if request.url.path in BODY_SIZE_EXEMPT_PATHS:
+            return await call_next(request)
+
+        content_length = request.headers.get("content-length")
+        if content_length and int(content_length) > MAX_BODY_SIZE:
+            return JSONResponse(status_code=413, content={"detail": "Request body too large"})
+
+        # Guard against chunked transfers with no content-length
+        if request.method in ("POST", "PUT", "PATCH"):
+            body = await request.body()
+            if len(body) > MAX_BODY_SIZE:
+                return JSONResponse(status_code=413, content={"detail": "Request body too large"})
+
+        return await call_next(request)
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -83,6 +123,7 @@ def create_app() -> FastAPI:
 
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    app.add_middleware(RequestBodySizeLimitMiddleware)
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(SlowAPIMiddleware)
 
@@ -90,11 +131,11 @@ def create_app() -> FastAPI:
         CORSMiddleware,
         allow_origins=origins,
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "Accept", "X-Request-ID"],
     )
 
-    from app.api.v1 import auth, companies, signals, dashboard, watchlists, alerts, billing, pipelines, opportunities, contacts, settings as settings_router
+    from app.api.v1 import auth, companies, signals, dashboard, watchlists, alerts, billing, pipelines, opportunities, contacts, settings as settings_router, admin
 
     app.include_router(auth.router, prefix=settings.api_prefix)
     app.include_router(companies.router, prefix=settings.api_prefix)
@@ -107,6 +148,7 @@ def create_app() -> FastAPI:
     app.include_router(opportunities.router, prefix=settings.api_prefix)
     app.include_router(contacts.router, prefix=settings.api_prefix)
     app.include_router(settings_router.router, prefix=settings.api_prefix)
+    app.include_router(admin.router, prefix=settings.api_prefix)
 
     @app.get("/health")
     async def health():
@@ -119,7 +161,8 @@ def create_app() -> FastAPI:
             async with async_session_factory() as session:
                 await session.execute(text("SELECT 1"))
         except Exception as e:
-            checks["db"] = f"error: {e}"
+            logger.error("health_check_db_failed", error=str(e), exc_info=True)
+            checks["db"] = "error"
 
         # Check Redis
         try:
@@ -130,7 +173,8 @@ def create_app() -> FastAPI:
             else:
                 checks["redis"] = "not configured"
         except Exception as e:
-            checks["redis"] = f"error: {e}"
+            logger.error("health_check_redis_failed", error=str(e), exc_info=True)
+            checks["redis"] = "error"
 
         healthy = all(v == "ok" for v in checks.values())
         return JSONResponse(

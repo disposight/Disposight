@@ -1,9 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api, type UserProfile } from "@/lib/api";
+import { api, type UserProfile, type GapPreferences } from "@/lib/api";
 import { UpgradeFlow } from "@/components/dashboard/checkout";
 import { useRevenue } from "@/contexts/revenue-context";
+
+const US_STATES = [
+  "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA",
+  "HI","ID","IL","IN","IA","KS","KY","LA","ME","MD",
+  "MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ",
+  "NM","NY","NC","ND","OH","OK","OR","PA","RI","SC",
+  "SD","TN","TX","UT","VT","VA","WA","WV","WI","WY",
+];
+
+const SIGNAL_TYPES_LIST = [
+  "layoff", "bankruptcy_ch7", "bankruptcy_ch11", "merger",
+  "office_closure", "plant_closing", "liquidation", "restructuring",
+  "ceasing_operations", "facility_shutdown", "acquisition", "relocation",
+];
 
 export default function SettingsPage() {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -14,12 +28,25 @@ export default function SettingsPage() {
   const [priceInput, setPriceInput] = useState(String(pricePerDevice));
   const [priceSaved, setPriceSaved] = useState(false);
 
+  // Gap preferences
+  const [gapPrefs, setGapPrefs] = useState<GapPreferences>({
+    states: [], industries: [], signal_types: [], min_deal_score: 0,
+  });
+  const [industryInput, setIndustryInput] = useState("");
+  const [gapSaved, setGapSaved] = useState(false);
+  const [gapLoading, setGapLoading] = useState(true);
+
   useEffect(() => {
     api
       .getMe()
       .then(setUser)
       .catch(() => {})
       .finally(() => setLoading(false));
+    api
+      .getGapPreferences()
+      .then(setGapPrefs)
+      .catch(() => {})
+      .finally(() => setGapLoading(false));
   }, []);
 
   useEffect(() => {
@@ -62,6 +89,44 @@ export default function SettingsPage() {
       setPricePerDevice(num);
       setPriceSaved(true);
       setTimeout(() => setPriceSaved(false), 2000);
+    }
+  };
+
+  const toggleGapState = (st: string) => {
+    setGapPrefs((p) => ({
+      ...p,
+      states: p.states.includes(st) ? p.states.filter((s) => s !== st) : [...p.states, st],
+    }));
+  };
+
+  const toggleGapSignalType = (t: string) => {
+    setGapPrefs((p) => ({
+      ...p,
+      signal_types: p.signal_types.includes(t)
+        ? p.signal_types.filter((s) => s !== t)
+        : [...p.signal_types, t],
+    }));
+  };
+
+  const addIndustry = () => {
+    const trimmed = industryInput.trim();
+    if (trimmed && !gapPrefs.industries.includes(trimmed)) {
+      setGapPrefs((p) => ({ ...p, industries: [...p.industries, trimmed] }));
+      setIndustryInput("");
+    }
+  };
+
+  const removeIndustry = (ind: string) => {
+    setGapPrefs((p) => ({ ...p, industries: p.industries.filter((i) => i !== ind) }));
+  };
+
+  const handleSaveGapPrefs = async () => {
+    try {
+      await api.updateGapPreferences(gapPrefs);
+      setGapSaved(true);
+      setTimeout(() => setGapSaved(false), 2000);
+    } catch {
+      // ignore
     }
   };
 
@@ -164,6 +229,158 @@ export default function SettingsPage() {
             {priceSaved ? "Saved!" : "Save"}
           </button>
         </div>
+      </div>
+
+      {/* Deal Discovery Preferences */}
+      <div
+        className="p-6 rounded-lg"
+        style={{ backgroundColor: "var(--bg-surface)", border: "1px solid var(--border-default)" }}
+      >
+        <h2 className="text-base font-semibold mb-2" style={{ color: "var(--text-primary)" }}>
+          Deal Discovery Preferences
+        </h2>
+        <p className="text-sm mb-4" style={{ color: "var(--text-secondary)" }}>
+          Customize which uncovered opportunities are highlighted on your dashboard. Leave empty to auto-detect from your pipeline.
+        </p>
+
+        {gapLoading ? (
+          <div className="h-24 rounded animate-pulse" style={{ backgroundColor: "var(--bg-base)" }} />
+        ) : (
+          <div className="space-y-5">
+            {/* States */}
+            <div>
+              <label className="text-xs font-medium block mb-2" style={{ color: "var(--text-muted)" }}>
+                States
+              </label>
+              <div className="flex flex-wrap gap-1">
+                {US_STATES.map((st) => {
+                  const active = gapPrefs.states.includes(st);
+                  return (
+                    <button
+                      key={st}
+                      onClick={() => toggleGapState(st)}
+                      className="px-2 py-1 rounded text-[10px] font-medium transition-colors"
+                      style={{
+                        backgroundColor: active ? "var(--accent-muted)" : "var(--bg-base)",
+                        color: active ? "var(--accent)" : "var(--text-muted)",
+                        border: `1px solid ${active ? "var(--accent)" : "var(--border-default)"}`,
+                      }}
+                    >
+                      {st}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Industries */}
+            <div>
+              <label className="text-xs font-medium block mb-2" style={{ color: "var(--text-muted)" }}>
+                Industries
+              </label>
+              <div className="flex flex-wrap gap-1 mb-2">
+                {gapPrefs.industries.map((ind) => (
+                  <span
+                    key={ind}
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium"
+                    style={{ backgroundColor: "var(--accent-muted)", color: "var(--accent)" }}
+                  >
+                    {ind}
+                    <button
+                      onClick={() => removeIndustry(ind)}
+                      className="hover:opacity-70"
+                      style={{ color: "var(--accent)" }}
+                    >
+                      &times;
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={industryInput}
+                  onChange={(e) => setIndustryInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && addIndustry()}
+                  placeholder="Add industry..."
+                  className="flex-1 px-3 py-1.5 rounded-md text-sm outline-none"
+                  style={{
+                    backgroundColor: "var(--bg-base)",
+                    border: "1px solid var(--border-default)",
+                    color: "var(--text-primary)",
+                  }}
+                />
+                <button
+                  onClick={addIndustry}
+                  className="px-3 py-1.5 rounded-md text-xs font-medium"
+                  style={{
+                    backgroundColor: "var(--bg-elevated)",
+                    color: "var(--text-secondary)",
+                    border: "1px solid var(--border-default)",
+                  }}
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+
+            {/* Signal Types */}
+            <div>
+              <label className="text-xs font-medium block mb-2" style={{ color: "var(--text-muted)" }}>
+                Signal Types
+              </label>
+              <div className="flex flex-wrap gap-1">
+                {SIGNAL_TYPES_LIST.map((t) => {
+                  const active = gapPrefs.signal_types.includes(t);
+                  return (
+                    <button
+                      key={t}
+                      onClick={() => toggleGapSignalType(t)}
+                      className="px-2.5 py-1 rounded text-[11px] font-medium transition-colors"
+                      style={{
+                        backgroundColor: active ? "var(--accent-muted)" : "var(--bg-base)",
+                        color: active ? "var(--accent)" : "var(--text-muted)",
+                        border: `1px solid ${active ? "var(--accent)" : "var(--border-default)"}`,
+                      }}
+                    >
+                      {t.replace(/_/g, " ")}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Min Deal Score */}
+            <div>
+              <label className="text-xs font-medium block mb-2" style={{ color: "var(--text-muted)" }}>
+                Minimum Deal Score: {gapPrefs.min_deal_score}
+              </label>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={gapPrefs.min_deal_score}
+                onChange={(e) =>
+                  setGapPrefs((p) => ({ ...p, min_deal_score: Number(e.target.value) }))
+                }
+                className="w-full accent-emerald-500"
+              />
+              <div className="flex justify-between text-[10px]" style={{ color: "var(--text-muted)" }}>
+                <span>0</span>
+                <span>100</span>
+              </div>
+            </div>
+
+            {/* Save */}
+            <button
+              onClick={handleSaveGapPrefs}
+              className="px-4 py-2 rounded-md text-sm font-medium transition-colors"
+              style={{ backgroundColor: "var(--accent)", color: "#fff" }}
+            >
+              {gapSaved ? "Saved!" : "Save Preferences"}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Billing */}

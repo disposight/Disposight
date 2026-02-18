@@ -18,17 +18,26 @@ async def get_stats(request: Request, db: DbSession, tenant_id: TenantId):
     now = datetime.now(timezone.utc)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
-    # Signals today
+    # Subquery: company IDs on this tenant's watchlist
+    tenant_company_ids = select(Watchlist.company_id).where(Watchlist.tenant_id == tenant_id).scalar_subquery()
+
+    # Signals today (scoped to tenant's watchlisted companies)
     signals_today = (
         await db.execute(
-            select(func.count(Signal.id)).where(Signal.created_at >= today_start)
+            select(func.count(Signal.id)).where(
+                Signal.created_at >= today_start,
+                Signal.company_id.in_(tenant_company_ids),
+            )
         )
     ).scalar() or 0
 
-    # High risk companies (score >= 60)
+    # High risk companies (score >= 60, scoped to tenant's watchlist)
     high_risk = (
         await db.execute(
-            select(func.count(Company.id)).where(Company.composite_risk_score >= 60)
+            select(func.count(Company.id)).where(
+                Company.composite_risk_score >= 60,
+                Company.id.in_(tenant_company_ids),
+            )
         )
     ).scalar() or 0
 

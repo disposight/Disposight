@@ -111,7 +111,17 @@ export const api = {
       body: JSON.stringify({ price_per_device: pricePerDevice }),
     }),
 
-  // Watchlists
+  // Gap Detection
+  getOpportunityGaps: (limit?: number) =>
+    apiFetch<GapDetectionResponse>(`/opportunities/gaps?limit=${limit || 5}`),
+  getGapPreferences: () => apiFetch<GapPreferences>("/settings/preferences"),
+  updateGapPreferences: (prefs: GapPreferences) =>
+    apiFetch<GapPreferences>("/settings/preferences", {
+      method: "PUT",
+      body: JSON.stringify(prefs),
+    }),
+
+  // Watchlists / Pipeline
   getWatchlist: () => apiFetch<WatchlistItem[]>("/watchlists"),
   addToWatchlist: (companyId: string, notes?: string) =>
     apiFetch<WatchlistItem>("/watchlists", {
@@ -122,11 +132,30 @@ export const api = {
     apiFetch<void>(`/watchlists/${id}`, { method: "DELETE" }),
   claimLead: (id: string) =>
     apiFetch<WatchlistItem>(`/watchlists/${id}/claim`, { method: "PUT" }),
-  updateLeadStatus: (id: string, status: string) =>
+  updateLeadStatus: (id: string, status: string, lostReason?: string) =>
     apiFetch<WatchlistItem>(`/watchlists/${id}/status`, {
       method: "PUT",
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, lost_reason: lostReason }),
     }),
+  updateLeadPriority: (id: string, priority: string) =>
+    apiFetch<WatchlistItem>(`/watchlists/${id}/priority`, {
+      method: "PUT",
+      body: JSON.stringify({ priority }),
+    }),
+  updateFollowUp: (id: string, followUpAt: string | null) =>
+    apiFetch<WatchlistItem>(`/watchlists/${id}/follow-up`, {
+      method: "PUT",
+      body: JSON.stringify({ follow_up_at: followUpAt }),
+    }),
+  addActivity: (id: string, data: { activity_type: string; title: string; body?: string }) =>
+    apiFetch<PipelineActivity>(`/watchlists/${id}/activities`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  getActivities: (id: string) =>
+    apiFetch<PipelineActivity[]>(`/watchlists/${id}/activities`),
+  getFollowUps: () => apiFetch<FollowUpItem[]>("/watchlists/follow-ups"),
+  getPipelineSummary: () => apiFetch<PipelineSummary>("/watchlists/summary"),
   getMyPipeline: () => apiFetch<WatchlistItem[]>("/watchlists/my-pipeline"),
   getTeamPipeline: () => apiFetch<WatchlistItem[]>("/watchlists/team-pipeline"),
 
@@ -164,6 +193,10 @@ export const api = {
     ),
   triggerPipelineRun: () =>
     apiFetch<Record<string, unknown>>("/pipelines/run", { method: "POST" }),
+
+  // Admin
+  runSecurityAudit: () => apiFetch<SecurityReport>("/admin/security-audit"),
+  getAuditHistory: () => apiFetch<AuditHistoryItem[]>("/admin/security-audit/history"),
 
   // Auth
   getMe: () => apiFetch<UserProfile>("/auth/me"),
@@ -258,8 +291,16 @@ export interface WatchlistItem {
   claimed_by: string | null;
   claimed_at: string | null;
   created_at: string;
+  priority: string;
+  follow_up_at: string | null;
+  last_activity_at: string | null;
+  closed_at: string | null;
+  lost_reason: string | null;
   company_name: string | null;
   composite_risk_score: number | null;
+  deal_score: number | null;
+  claimed_by_name: string | null;
+  activity_count: number;
 }
 
 export interface Alert {
@@ -391,6 +432,10 @@ export interface Opportunity {
   top_factors: string[];
   has_contacts: boolean;
   contact_count: number;
+  justification: string;
+  predicted_phase: string;
+  predicted_phase_label: string;
+  phase_verb: string;
 }
 
 export interface OpportunityListResponse {
@@ -412,6 +457,23 @@ export interface OpportunityDetail extends Opportunity {
   score_breakdown: ScoreBreakdown | null;
   signal_velocity: number;
   domain: string | null;
+  deal_justification: string | null;
+  phase_explanation: string;
+  phase_confidence: string;
+  watchlist_id: string | null;
+  watchlist_status: string | null;
+  watchlist_priority: string | null;
+  follow_up_at: string | null;
+}
+
+export interface RecentChange {
+  company_id: string;
+  company_name: string;
+  signal_type: string;
+  title: string;
+  source_name: string;
+  detected_at: string;
+  device_estimate: number | null;
 }
 
 export interface CommandCenterStats {
@@ -423,10 +485,42 @@ export interface CommandCenterStats {
   total_devices_in_pipeline: number;
   watchlist_count: number;
   top_opportunities: Opportunity[];
+  calls_to_make: number;
+  contacts_to_make: number;
+  recent_changes: RecentChange[];
 }
 
 export interface RevenueSettings {
   price_per_device: number;
+}
+
+export interface GapOpportunity {
+  opportunity: Opportunity;
+  gap_score: number;
+  match_reasons: string[];
+  is_new: boolean;
+}
+
+export interface TenantProfileSummary {
+  states: string[];
+  industries: string[];
+  signal_types: string[];
+  min_deal_score: number;
+  is_explicit: boolean;
+  watchlist_count: number;
+}
+
+export interface GapDetectionResponse {
+  gaps: GapOpportunity[];
+  profile: TenantProfileSummary;
+  total_uncovered: number;
+}
+
+export interface GapPreferences {
+  states: string[];
+  industries: string[];
+  signal_types: string[];
+  min_deal_score: number;
 }
 
 // Contact types
@@ -453,4 +547,66 @@ export interface ContactsResponse {
   company_name: string;
   status: "found" | "none_found" | "no_domain";
   total: number;
+}
+
+// Pipeline activity types
+export interface PipelineActivity {
+  id: string;
+  watchlist_id: string;
+  user_id: string;
+  activity_type: string;
+  title: string;
+  body: string | null;
+  old_value: string | null;
+  new_value: string | null;
+  created_at: string;
+  user_name: string | null;
+}
+
+export interface FollowUpItem {
+  watchlist_id: string;
+  company_id: string;
+  company_name: string | null;
+  follow_up_at: string;
+  status: string;
+  priority: string;
+  is_overdue: boolean;
+  days_until: number;
+  claimed_by_name: string | null;
+}
+
+export interface PipelineSummary {
+  total: number;
+  by_status: Record<string, number>;
+  overdue_follow_ups: number;
+  won_this_month: number;
+  lost_this_month: number;
+}
+
+// Security audit types
+export interface SecurityCheckResult {
+  name: string;
+  severity: string;
+  status: string;
+  message: string;
+  details: string | null;
+}
+
+export interface SecurityReport {
+  overall_status: string;
+  run_at: string;
+  checks: SecurityCheckResult[];
+  summary: {
+    total: number;
+    passed: number;
+    warnings: number;
+    failures: number;
+  };
+}
+
+export interface AuditHistoryItem {
+  id: string;
+  overall_status: string;
+  checks: SecurityCheckResult[];
+  created_at: string | null;
 }

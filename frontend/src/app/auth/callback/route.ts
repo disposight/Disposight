@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
+function sanitizeRedirectPath(path: string | null): string {
+  if (!path || !path.startsWith("/") || path.startsWith("//") || path.includes("://")) {
+    return "/dashboard";
+  }
+  return path;
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/dashboard";
+  const next = sanitizeRedirectPath(searchParams.get("next"));
 
   if (code) {
     const response = NextResponse.redirect(`${origin}${next}`);

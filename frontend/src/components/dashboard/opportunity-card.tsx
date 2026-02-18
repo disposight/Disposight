@@ -5,10 +5,10 @@ import type { Opportunity } from "@/lib/api";
 import { Tooltip } from "@/components/tooltip";
 import { DealScoreBadge } from "./deal-score-badge";
 import { DispositionBadge } from "./disposition-badge";
+import { TimingBadge } from "./timing-badge";
 import { RevenueDisplay } from "./revenue-display";
 import { SourceBadges } from "./source-badges";
 import { NextActionBar } from "./next-action";
-import { CompactScoreBreakdown } from "./score-breakdown";
 
 const categoryLabels: Record<string, string> = {
   layoff: "LAYOFF",
@@ -148,6 +148,14 @@ export function OpportunityCard({
                 </div>
               </div>
               <DispositionBadge window={opp.disposition_window} />
+              {opp.predicted_phase && (
+                <TimingBadge
+                  phase={opp.predicted_phase}
+                  phaseLabel={opp.predicted_phase_label}
+                  verb={opp.phase_verb}
+                  compact
+                />
+              )}
             </div>
 
             {/* Stats row */}
@@ -195,9 +203,14 @@ export function OpportunityCard({
               </div>
             </div>
 
-            {/* Top factors — compact score breakdown */}
-            {!compact && opp.top_factors && opp.top_factors.length > 0 && (
-              <CompactScoreBreakdown topFactors={opp.top_factors} />
+            {/* Deal justification prose */}
+            {!compact && opp.justification && (
+              <p
+                className="mt-2 text-[11px] leading-relaxed line-clamp-3"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                {opp.justification}
+              </p>
             )}
 
             {/* Badges row */}

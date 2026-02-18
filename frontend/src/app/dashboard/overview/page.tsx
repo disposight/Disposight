@@ -51,6 +51,9 @@ export default function OverviewPage() {
           total_devices_in_pipeline: 0,
           watchlist_count: 0,
           top_opportunities: [],
+          calls_to_make: 0,
+          contacts_to_make: 0,
+          recent_changes: [],
         });
       })
       .finally(() => setLoading(false));

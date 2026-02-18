@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api, type WatchlistItem } from "@/lib/api";
 import { PlanGate } from "@/components/dashboard/plan-gate";
-import { UpgradePrompt } from "@/components/dashboard/upgrade-prompt";
 import { usePlan } from "@/contexts/plan-context";
+import { FollowUpIndicator } from "@/components/dashboard/follow-up-indicator";
 
 function scoreColor(score: number): string {
   if (score >= 80) return "var(--critical)";
@@ -15,17 +15,28 @@ function scoreColor(score: number): string {
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  watching: "Watching",
-  claimed: "Claimed",
+  identified: "Identified",
+  researching: "Researching",
   contacted: "Contacted",
-  passed: "Passed",
+  negotiating: "Negotiating",
+  won: "Won",
+  lost: "Lost",
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  watching: "var(--text-muted)",
-  claimed: "var(--accent)",
+  identified: "var(--text-muted)",
+  researching: "var(--accent)",
   contacted: "var(--high)",
-  passed: "var(--low)",
+  negotiating: "var(--medium)",
+  won: "#10b981",
+  lost: "var(--critical)",
+};
+
+const PRIORITY_COLORS: Record<string, string> = {
+  urgent: "var(--critical)",
+  high: "var(--high)",
+  medium: "var(--medium)",
+  low: "var(--text-muted)",
 };
 
 export default function WatchlistPage() {
@@ -89,6 +100,12 @@ export default function WatchlistPage() {
                 style={{ backgroundColor: "var(--bg-surface)", border: "1px solid var(--border-default)" }}
               >
                 <div className="flex items-center gap-4">
+                  {/* Priority dot */}
+                  <span
+                    className="w-2.5 h-2.5 rounded-full shrink-0"
+                    style={{ backgroundColor: PRIORITY_COLORS[item.priority] || "var(--text-muted)" }}
+                    title={`Priority: ${item.priority}`}
+                  />
                   <span
                     className="text-lg font-mono font-medium"
                     style={{ color: scoreColor(item.composite_risk_score ?? 0) }}
@@ -96,13 +113,16 @@ export default function WatchlistPage() {
                     {item.composite_risk_score ?? 0}
                   </span>
                   <div>
-                    <Link
-                      href={`/dashboard/opportunities/${item.company_id}`}
-                      className="text-sm font-medium hover:underline"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {item.company_name || "Unknown"}
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={`/dashboard/opportunities/${item.company_id}`}
+                        className="text-sm font-medium hover:underline"
+                        style={{ color: "var(--text-primary)" }}
+                      >
+                        {item.company_name || "Unknown"}
+                      </Link>
+                      <FollowUpIndicator followUpAt={item.follow_up_at} compact />
+                    </div>
                     {item.notes && (
                       <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
                         {item.notes}
@@ -114,13 +134,13 @@ export default function WatchlistPage() {
                 <div className="flex items-center gap-3">
                   {/* Status badge */}
                   <select
-                    value={item.status || "watching"}
+                    value={item.status || "identified"}
                     onChange={(e) => handleStatusChange(item.id, e.target.value)}
                     className="px-2 py-1 rounded text-xs outline-none"
                     style={{
                       backgroundColor: "var(--bg-elevated)",
                       border: "1px solid var(--border-default)",
-                      color: STATUS_COLORS[item.status || "watching"],
+                      color: STATUS_COLORS[item.status || "identified"],
                     }}
                   >
                     {Object.entries(STATUS_LABELS).map(([val, label]) => (
@@ -128,8 +148,8 @@ export default function WatchlistPage() {
                     ))}
                   </select>
 
-                  {/* Claim button (if watching) */}
-                  {(item.status === "watching" || !item.status) && (
+                  {/* Claim button (if identified) */}
+                  {(item.status === "identified" || !item.status) && (
                     <button
                       onClick={() => handleClaim(item.id)}
                       className="text-xs px-3 py-1 rounded font-medium transition-colors"

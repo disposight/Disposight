@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.schemas.signal import SignalOut
 
@@ -46,6 +46,10 @@ class OpportunityOut(BaseModel):
     top_factors: list[str] = []
     has_contacts: bool = False
     contact_count: int = 0
+    justification: str = ""
+    predicted_phase: str = ""
+    predicted_phase_label: str = ""
+    phase_verb: str = ""
 
     model_config = {"from_attributes": True}
 
@@ -69,6 +73,23 @@ class OpportunityDetailOut(OpportunityOut):
     score_breakdown: ScoreBreakdownOut | None = None
     signal_velocity: float = 0.0
     domain: str | None = None
+    deal_justification: str | None = None
+    phase_explanation: str = ""
+    phase_confidence: str = ""
+    watchlist_id: UUID | None = None
+    watchlist_status: str | None = None
+    watchlist_priority: str | None = None
+    follow_up_at: datetime | None = None
+
+
+class RecentChange(BaseModel):
+    company_id: UUID
+    company_name: str
+    signal_type: str
+    title: str
+    source_name: str
+    detected_at: datetime
+    device_estimate: int | None = None
 
 
 class CommandCenterStats(BaseModel):
@@ -80,3 +101,42 @@ class CommandCenterStats(BaseModel):
     total_devices_in_pipeline: int
     watchlist_count: int
     top_opportunities: list[OpportunityOut]
+    calls_to_make: int = 0
+    contacts_to_make: int = 0
+    recent_changes: list[RecentChange] = []
+
+
+class GapOpportunityOut(BaseModel):
+    opportunity: OpportunityOut
+    gap_score: int
+    match_reasons: list[str]
+    is_new: bool = False
+
+
+class TenantProfileSummary(BaseModel):
+    states: list[str] = []
+    industries: list[str] = []
+    signal_types: list[str] = []
+    min_deal_score: int = 0
+    is_explicit: bool = False
+    watchlist_count: int = 0
+
+
+class GapDetectionResponse(BaseModel):
+    gaps: list[GapOpportunityOut]
+    profile: TenantProfileSummary
+    total_uncovered: int
+
+
+class GapPreferencesOut(BaseModel):
+    states: list[str] = []
+    industries: list[str] = []
+    signal_types: list[str] = []
+    min_deal_score: int = 0
+
+
+class GapPreferencesUpdate(BaseModel):
+    states: list[str] = []
+    industries: list[str] = []
+    signal_types: list[str] = []
+    min_deal_score: int = Field(default=0, ge=0, le=100)

@@ -7,8 +7,8 @@ from fastapi import APIRouter, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import func, select
 
-from app.api.v1.deps import AdminUserId, CurrentUserId, DbSession
-from app.models import RawSignal, Signal
+from app.api.v1.deps import AdminUserId, CurrentUserId, DbSession, TenantId
+from app.models import RawSignal, Signal, Watchlist
 from app.rate_limit import limiter
 
 router = APIRouter(prefix="/pipelines", tags=["pipelines"])
@@ -38,6 +38,7 @@ class PipelineRunResponse(BaseModel):
 async def check_new_signals(
     request: Request,
     user_id: CurrentUserId,
+    tenant_id: TenantId,
     db: DbSession,
     since: str = Query(
         ...,
@@ -50,9 +51,13 @@ async def check_new_signals(
     except ValueError:
         since_dt = datetime.now(timezone.utc)
 
+    # Scope to tenant's watchlisted companies
+    tenant_company_ids = select(Watchlist.company_id).where(Watchlist.tenant_id == tenant_id).scalar_subquery()
+
     result = await db.execute(
         select(func.count(Signal.id), func.max(Signal.created_at)).where(
-            Signal.created_at > since_dt
+            Signal.created_at > since_dt,
+            Signal.company_id.in_(tenant_company_ids),
         )
     )
     row = result.one()

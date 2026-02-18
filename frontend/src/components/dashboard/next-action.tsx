@@ -33,6 +33,24 @@ const TYPE_PRIORITY = [
   "merger", "acquisition", "relocation",
 ];
 
+function phaseToVerb(phase: string, dealScore: number): string {
+  switch (phase) {
+    case "active_liquidation": return "Call";
+    case "early_outreach":     return dealScore >= 70 ? "Contact" : "Email";
+    case "late_stage":         return "Monitor";
+    default:                   return "Email";
+  }
+}
+
+function urgencyColorFromPhase(phase: string): string {
+  switch (phase) {
+    case "active_liquidation": return "var(--critical)";
+    case "early_outreach":     return "var(--accent)";
+    case "late_stage":         return "var(--text-muted)";
+    default:                   return "var(--text-muted)";
+  }
+}
+
 function pickVerb(disposition: string, dealScore: number): string {
   if (disposition === "Immediate" || dealScore >= 85) return "Call";
   if (disposition === "2-4 weeks" || dealScore >= 70) return "Contact";
@@ -60,7 +78,14 @@ export function getNextAction(opp: Opportunity): NextAction {
   const primary = TYPE_PRIORITY.find((t) => opp.signal_types.includes(t));
   const entry = primary ? CONTACT_MAP[primary] : null;
 
-  const verb = pickVerb(opp.disposition_window, opp.deal_score);
+  // Prefer predicted phase for verb + color when available
+  const verb = opp.predicted_phase
+    ? phaseToVerb(opp.predicted_phase, opp.deal_score)
+    : pickVerb(opp.disposition_window, opp.deal_score);
+  const color = opp.predicted_phase
+    ? urgencyColorFromPhase(opp.predicted_phase)
+    : urgencyColor(opp.disposition_window);
+
   const target = entry?.target ?? "IT Decision-Maker";
   const eventReason = entry?.context ?? "Distress signals detected";
   const assets = deviceContext(opp.total_device_estimate);
@@ -68,7 +93,7 @@ export function getNextAction(opp: Opportunity): NextAction {
   // Build a tight reason: event context + device scale
   const reason = `${eventReason}. ${assets}.`;
 
-  return { verb, target, reason, urgencyColor: urgencyColor(opp.disposition_window) };
+  return { verb, target, reason, urgencyColor: color };
 }
 
 export function NextActionBar({ opportunity }: { opportunity: Opportunity }) {

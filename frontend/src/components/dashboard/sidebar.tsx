@@ -4,11 +4,12 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { useNewSignals } from "@/lib/use-new-signals";
+import { usePlan } from "@/contexts/plan-context";
 import { createClient } from "@/lib/supabase";
 
 const navItems = [
   { label: "Pipeline", items: [
-    { href: "/dashboard", label: "Deals", icon: "⚡", badge: true },
+    { href: "/dashboard", label: "Today", icon: "⚡", badge: true },
     { href: "/dashboard/overview", label: "Overview", icon: "◉" },
     { href: "/dashboard/map", label: "Map", icon: "◎" },
   ]},
@@ -28,6 +29,22 @@ export function Sidebar() {
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
   const { newCount, dismiss } = useNewSignals();
+  const { user } = usePlan();
+  const isAdmin = user?.role === "owner" || user?.role === "admin";
+
+  const allNavItems = isAdmin
+    ? [
+        ...navItems.slice(0, -1),
+        {
+          label: "Account",
+          items: [
+            { href: "/dashboard/settings", label: "Settings", icon: "⚙" },
+            { href: "/dashboard/admin/security", label: "Security", icon: "🛡" },
+            { href: "/dashboard/help", label: "Help", icon: "?" },
+          ],
+        },
+      ]
+    : navItems;
 
   const handleSignOut = async () => {
     const supabase = createClient();
@@ -54,7 +71,7 @@ export function Sidebar() {
       </a>
 
       <nav className="flex-1 px-2 py-4 space-y-6 overflow-y-auto">
-        {navItems.map((section) => (
+        {allNavItems.map((section) => (
           <div key={section.label}>
             {!collapsed && (
               <p

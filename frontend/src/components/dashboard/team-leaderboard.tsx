@@ -1,42 +1,29 @@
 "use client";
 
 import type { WatchlistItem } from "@/lib/api";
-import { useRevenue } from "@/contexts/revenue-context";
 
 interface TeamLeaderboardProps {
   items: WatchlistItem[];
 }
 
-interface RepStats {
-  name: string;
-  claimed: number;
-  contacted: number;
-  totalScore: number;
-}
-
 export function TeamLeaderboard({ items }: TeamLeaderboardProps) {
-  const { formatRevenue } = useRevenue();
-
   // Group by claimed_by
-  const repMap = new Map<string, { count: number; contacted: number; totalScore: number }>();
+  const repMap = new Map<string, { count: number; active: number; won: number; totalScore: number; name: string }>();
   for (const item of items) {
     const key = item.claimed_by || "unassigned";
-    const existing = repMap.get(key) || { count: 0, contacted: 0, totalScore: 0 };
+    const existing = repMap.get(key) || { count: 0, active: 0, won: 0, totalScore: 0, name: item.claimed_by_name || key.slice(0, 8) + "..." };
     existing.count++;
-    if (item.status === "contacted") existing.contacted++;
+    if (["researching", "contacted", "negotiating"].includes(item.status)) existing.active++;
+    if (item.status === "won") existing.won++;
     existing.totalScore += item.composite_risk_score || 0;
+    if (item.claimed_by_name) existing.name = item.claimed_by_name;
     repMap.set(key, existing);
   }
 
   const reps = Array.from(repMap.entries())
     .filter(([key]) => key !== "unassigned")
-    .map(([key, stats]) => ({
-      name: key.slice(0, 8) + "...",
-      claimed: stats.count,
-      contacted: stats.contacted,
-      totalScore: stats.totalScore,
-    }))
-    .sort((a, b) => b.claimed - a.claimed);
+    .map(([, stats]) => stats)
+    .sort((a, b) => b.active - a.active || b.won - a.won);
 
   if (reps.length === 0) {
     return (
@@ -45,7 +32,7 @@ export function TeamLeaderboard({ items }: TeamLeaderboardProps) {
         style={{ backgroundColor: "var(--bg-surface)", border: "1px solid var(--border-default)" }}
       >
         <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-          No claimed leads yet
+          No active leads yet
         </p>
       </div>
     );
@@ -74,13 +61,13 @@ export function TeamLeaderboard({ items }: TeamLeaderboardProps) {
               >
                 {i + 1}
               </span>
-              <span className="text-sm font-mono" style={{ color: "var(--text-primary)" }}>
+              <span className="text-sm" style={{ color: "var(--text-primary)" }}>
                 {rep.name}
               </span>
             </div>
             <div className="flex items-center gap-4 text-xs" style={{ color: "var(--text-muted)" }}>
-              <span>{rep.claimed} claimed</span>
-              <span>{rep.contacted} contacted</span>
+              <span>{rep.active} active</span>
+              <span style={{ color: rep.won > 0 ? "#10b981" : "var(--text-muted)" }}>{rep.won} won</span>
             </div>
           </div>
         ))}

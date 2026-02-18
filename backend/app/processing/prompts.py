@@ -110,3 +110,24 @@ Produce a JSON analysis with these fields:
 For likely_asset_types: Based on the company's industry, employee count, and event type, list 2-5 categories of physical assets likely available for disposition. Categories include: IT Equipment, Office Furniture, Data Center/Servers, Networking Gear, Phones/Telecom, Vehicles/Fleet, Manufacturing Equipment, Retail Fixtures, Medical Equipment, Warehouse/Logistics, AV Equipment. Include specific item examples and estimated volumes.
 
 Return ONLY valid JSON, no explanation."""
+
+DEAL_JUSTIFICATION_PROMPT = """You are writing a concise professional deal summary for an asset acquisition team. Write a single paragraph of 4-6 sentences covering these points in order:
+
+1. What distress event occurred and the quality of evidence supporting it.
+2. The estimated volume of surplus assets and their approximate recovery value.
+3. The timing urgency — how quickly assets will become available.
+4. A clear pursuit recommendation based on the overall picture.
+
+Company: {company_name}
+Signal types detected: {signal_types}
+Sources: {source_names}
+Estimated surplus devices: {total_devices}
+Estimated recovery value: {revenue_estimate}
+Disposition window: {disposition_window}
+Deal score: {deal_score}/100 ({score_band_label})
+Risk trend: {risk_trend}
+Average severity: {avg_severity}/100
+Average confidence: {avg_confidence}/100
+Number of signals: {signal_count}
+
+Write plain text only — no JSON, no bullet points, no headers, no markdown. The output should read like a brief you could paste into an email to a VP of Sales."""

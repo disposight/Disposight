@@ -23,14 +23,20 @@ class Watchlist(Base):
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
     )
     notes: Mapped[str | None] = mapped_column(Text)
-    status: Mapped[str] = mapped_column(String(20), server_default="watching")
+    status: Mapped[str] = mapped_column(String(20), server_default="identified")
     claimed_by: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
     )
     claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    priority: Mapped[str] = mapped_column(String(20), server_default="medium")
+    follow_up_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_activity_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    lost_reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
     tenant = relationship("Tenant", back_populates="watchlists")
     company = relationship("Company")
+    activities = relationship("PipelineActivity", back_populates="watchlist", order_by="PipelineActivity.created_at.desc()")

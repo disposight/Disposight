@@ -1,6 +1,6 @@
 import csv
 import io
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 import structlog
@@ -14,14 +14,25 @@ from app.models import Company, Contact, Signal, Watchlist
 from app.plan_limits import raise_plan_limit
 from app.processing.deal_scorer import DealScoreResult, compute_deal_score
 from app.processing.disposition import get_disposition_window
+from app.processing.justification import generate_compact_justification, generate_full_justification
+from app.processing.timing import predict_phase
 from app.rate_limit import limiter
+from app.processing.gap_detector import (
+    derive_profile_from_watchlist,
+    detect_gaps,
+    merge_with_explicit_prefs,
+)
 from app.schemas.opportunity import (
     CommandCenterStats,
+    GapDetectionResponse,
+    GapOpportunityOut,
     OpportunityDetailOut,
     OpportunityListResponse,
     OpportunityOut,
+    RecentChange,
     ScoreBreakdownOut,
     ScoreFactorOut,
+    TenantProfileSummary,
 )
 from app.schemas.signal import SignalOut
 
@@ -172,6 +183,34 @@ async def _build_opportunities(
         revenue = total_devices * price_per_device
         disposition = get_disposition_window(signal_types_list)
 
+        justification = generate_compact_justification(
+            company_name=row.company_name,
+            signal_types=signal_types_list,
+            source_names=source_names_list,
+            total_devices=total_devices,
+            revenue_estimate=revenue,
+            disposition_window=disposition,
+            deal_score=deal_result.score,
+            score_band=deal_result.band,
+            risk_trend=row.risk_trend or "stable",
+            source_diversity=int(row.source_diversity or 1),
+            days_since_latest=days_since,
+            penalty_applied=deal_result.penalty_applied,
+        )
+
+        days_span_approx = (now - row.earliest_signal_at.replace(tzinfo=timezone.utc)).days if row.earliest_signal_at else 0
+        velocity_approx = round(row.signal_count / max(1, days_span_approx) * 30, 1) if days_span_approx > 0 else 0.0
+
+        timing = predict_phase(
+            signal_types=signal_types_list,
+            days_since_latest=days_since,
+            signal_velocity=velocity_approx,
+            employee_count=row.employee_count,
+            disposition_window=disposition,
+            risk_trend=row.risk_trend or "stable",
+            signal_count=row.signal_count,
+        )
+
         opportunities.append(
             OpportunityOut(
                 company_id=row.company_id,
@@ -197,6 +236,10 @@ async def _build_opportunities(
                 top_factors=deal_result.top_factors,
                 has_contacts=contact_count_map.get(row.company_id, 0) > 0,
                 contact_count=contact_count_map.get(row.company_id, 0),
+                justification=justification,
+                predicted_phase=timing.phase,
+                predicted_phase_label=timing.phase_label,
+                phase_verb=timing.verb,
             )
         )
 
@@ -286,13 +329,46 @@ async def get_command_center_stats(
 
     # 7-day pipeline value change (approximate: compare total vs opportunities older than 7 days)
     seven_days_ago = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    from datetime import timedelta
-
     seven_days_ago = seven_days_ago - timedelta(days=7)
     old_value = sum(o.revenue_estimate for o in all_opps if o.latest_signal_at < seven_days_ago)
     new_value = sum(o.revenue_estimate for o in all_opps if o.latest_signal_at >= seven_days_ago)
 
     top_5 = sorted(all_opps, key=lambda o: o.deal_score, reverse=True)[:5]
+
+    # Action counts — phase-aware
+    calls_to_make = sum(1 for o in all_opps if o.predicted_phase == "active_liquidation")
+    contacts_to_make = sum(1 for o in all_opps if o.predicted_phase == "early_outreach" and o.deal_score >= 55)
+
+    # Recent changes: last 48h signals joined with companies
+    cutoff = now - timedelta(hours=48)
+    changes_q = (
+        select(
+            Signal.company_id,
+            Company.name.label("company_name"),
+            Signal.signal_type,
+            Signal.title,
+            Signal.source_name,
+            Signal.created_at,
+            Signal.device_estimate,
+        )
+        .join(Company, Company.id == Signal.company_id)
+        .where(Signal.created_at >= cutoff)
+        .order_by(Signal.created_at.desc())
+        .limit(10)
+    )
+    changes_result = await db.execute(changes_q)
+    recent_changes = [
+        RecentChange(
+            company_id=row.company_id,
+            company_name=row.company_name,
+            signal_type=row.signal_type,
+            title=row.title,
+            source_name=row.source_name,
+            detected_at=row.created_at,
+            device_estimate=row.device_estimate,
+        )
+        for row in changes_result.all()
+    ]
 
     return CommandCenterStats(
         total_pipeline_value=total_pipeline_value,
@@ -303,6 +379,9 @@ async def get_command_center_stats(
         total_devices_in_pipeline=total_devices,
         watchlist_count=watchlist_count,
         top_opportunities=top_5,
+        calls_to_make=calls_to_make,
+        contacts_to_make=contacts_to_make,
+        recent_changes=recent_changes,
     )
 
 
@@ -371,6 +450,7 @@ async def export_opportunities_csv(
         "Company", "Ticker", "Industry", "State", "Deal Score", "Score Band",
         "Devices", "Revenue Estimate", "Signal Count", "Signal Types",
         "Sources", "Risk Score", "Risk Trend", "Latest Signal", "Disposition Window",
+        "Predicted Phase", "Justification",
     ])
     for o in all_opps:
         writer.writerow([
@@ -381,6 +461,8 @@ async def export_opportunities_csv(
             "; ".join(o.source_names), o.composite_risk_score, o.risk_trend,
             o.latest_signal_at.isoformat() if o.latest_signal_at else "",
             o.disposition_window or "",
+            o.predicted_phase_label,
+            o.justification,
         ])
 
     output.seek(0)
@@ -388,6 +470,101 @@ async def export_opportunities_csv(
         iter([output.getvalue()]),
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=opportunities.csv"},
+    )
+
+
+@router.get("/gaps", response_model=GapDetectionResponse)
+@limiter.limit("60/minute")
+async def detect_opportunity_gaps(
+    request: Request,
+    db: DbSession,
+    tenant_id: TenantId,
+    limit: int = Query(5, ge=1, le=20),
+):
+    """Detect high-value unwatched opportunities matching the tenant's profile."""
+    from app.models import Tenant
+
+    price_per_device = await _get_price_per_device(db, tenant_id)
+
+    # 1. Get all opportunities (unpaginated)
+    all_opps, total_opps, _, _ = await _build_opportunities(
+        db, tenant_id, price_per_device, per_page=9999
+    )
+
+    # 2. Get watched companies with their metadata
+    wl_query = (
+        select(
+            Watchlist.company_id,
+            Company.industry,
+            Company.headquarters_state,
+        )
+        .join(Company, Company.id == Watchlist.company_id)
+        .where(Watchlist.tenant_id == tenant_id)
+    )
+    wl_result = await db.execute(wl_query)
+    wl_rows = wl_result.all()
+
+    watched_ids = {r.company_id for r in wl_rows}
+    watched_companies = [
+        {
+            "headquarters_state": r.headquarters_state,
+            "industry": r.industry,
+        }
+        for r in wl_rows
+    ]
+
+    # 3. Get signal types for watched companies
+    watched_signal_types: list[str] = []
+    if watched_ids:
+        sig_result = await db.execute(
+            select(Signal.signal_type).where(
+                Signal.company_id.in_(watched_ids)
+            )
+        )
+        watched_signal_types = [r[0] for r in sig_result.all() if r[0]]
+
+    # 4. Derive profile
+    inferred = derive_profile_from_watchlist(watched_companies, watched_signal_types)
+
+    # 5. Load explicit preferences
+    tenant = await db.get(Tenant, tenant_id)
+    explicit_prefs = (tenant.settings or {}).get("gap_preferences") if tenant else None
+    is_explicit = explicit_prefs is not None and any(
+        explicit_prefs.get(k) for k in ("states", "industries", "signal_types")
+    )
+
+    # 6. Merge
+    profile = merge_with_explicit_prefs(inferred, explicit_prefs)
+
+    # 7. Detect gaps
+    gap_results, total_uncovered = detect_gaps(
+        all_opps, watched_ids, profile, limit=limit
+    )
+
+    # 8. Build response
+    gaps = [
+        GapOpportunityOut(
+            opportunity=opp,
+            gap_score=gap_match.gap_score,
+            match_reasons=gap_match.match_reasons,
+            is_new=gap_match.is_new,
+        )
+        for opp, gap_match in gap_results
+    ]
+
+    profile_summary = TenantProfileSummary(
+        states=profile.states,
+        industries=profile.industries,
+        signal_types=profile.signal_types,
+        min_deal_score=profile.min_deal_score,
+        is_explicit=is_explicit,
+        watchlist_count=len(watched_ids),
+    )
+
+    return GapDetectionResponse(
+        gaps=gaps,
+        profile=profile_summary,
+        total_uncovered=total_uncovered,
     )
 
 
@@ -417,14 +594,15 @@ async def get_opportunity(
     if not signals:
         raise HTTPException(status_code=404, detail="No signals found for this company")
 
-    # Check if watched
+    # Check if watched — fetch full row for pipeline fields
     wl_result = await db.execute(
-        select(Watchlist.id).where(
+        select(Watchlist).where(
             Watchlist.tenant_id == tenant_id,
             Watchlist.company_id == company_id,
         )
     )
-    is_watched = wl_result.scalar_one_or_none() is not None
+    watchlist_row = wl_result.scalar_one_or_none()
+    is_watched = watchlist_row is not None
 
     now = datetime.now(timezone.utc)
     total_devices = sum(s.device_estimate or 0 for s in signals)
@@ -456,12 +634,59 @@ async def get_opportunity(
     disposition = get_disposition_window(signal_types)
     revenue = total_devices * price_per_device
 
+    timing = predict_phase(
+        signal_types=signal_types,
+        days_since_latest=days_since,
+        signal_velocity=signal_velocity,
+        employee_count=company.employee_count,
+        disposition_window=disposition,
+        risk_trend=company.risk_trend or "stable",
+        signal_count=len(signals),
+    )
+
     # Extract AI analysis fields from best signal's metadata
     best_signal = max(signals, key=lambda s: s.severity_score)
     cached_analysis = (best_signal.metadata_ or {}).get("analysis_cache", {})
     recommended_actions = cached_analysis.get("recommended_actions")
     asset_opportunity = cached_analysis.get("asset_opportunity")
     likely_asset_types = cached_analysis.get("likely_asset_types", [])
+
+    # Generate justifications
+    justification = generate_compact_justification(
+        company_name=company.name,
+        signal_types=signal_types,
+        source_names=source_names,
+        total_devices=total_devices,
+        revenue_estimate=revenue,
+        disposition_window=disposition,
+        deal_score=deal_result.score,
+        score_band=deal_result.band,
+        risk_trend=company.risk_trend or "stable",
+        source_diversity=len(source_names),
+        days_since_latest=days_since,
+        penalty_applied=deal_result.penalty_applied,
+    )
+
+    deal_justification, justification_is_new = await generate_full_justification(
+        company=company,
+        company_name=company.name,
+        signal_types=signal_types,
+        source_names=source_names,
+        total_devices=total_devices,
+        revenue_estimate=revenue,
+        disposition_window=disposition,
+        deal_score=deal_result.score,
+        score_band_label=deal_result.band_label,
+        risk_trend=company.risk_trend or "stable",
+        avg_severity=avg_severity,
+        avg_confidence=avg_confidence,
+        signal_count=len(signals),
+    )
+
+    if justification_is_new:
+        from sqlalchemy.orm.attributes import flag_modified
+        flag_modified(company, "metadata_")
+        await db.commit()
 
     # Log distress pattern
     _log_distress_pattern(company, deal_result, signals, signal_velocity, days_span)
@@ -508,6 +733,10 @@ async def get_opportunity(
         top_factors=deal_result.top_factors,
         has_contacts=contact_count > 0,
         contact_count=contact_count,
+        justification=justification,
+        predicted_phase=timing.phase,
+        predicted_phase_label=timing.phase_label,
+        phase_verb=timing.verb,
         signals=signal_outs,
         avg_confidence=round(avg_confidence, 1),
         avg_severity=round(avg_severity, 1),
@@ -517,4 +746,11 @@ async def get_opportunity(
         score_breakdown=score_breakdown,
         signal_velocity=signal_velocity,
         domain=company.domain,
+        deal_justification=deal_justification,
+        phase_explanation=timing.explanation,
+        phase_confidence=timing.confidence,
+        watchlist_id=watchlist_row.id if watchlist_row else None,
+        watchlist_status=watchlist_row.status if watchlist_row else None,
+        watchlist_priority=watchlist_row.priority if watchlist_row else None,
+        follow_up_at=watchlist_row.follow_up_at if watchlist_row else None,
     )

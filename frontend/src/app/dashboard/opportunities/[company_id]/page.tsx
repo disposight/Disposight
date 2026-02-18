@@ -4,8 +4,11 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { api, PlanLimitError, type OpportunityDetail, type SignalAnalysis } from "@/lib/api";
+import { ActivityTimeline } from "@/components/dashboard/activity-timeline";
+import { FollowUpIndicator } from "@/components/dashboard/follow-up-indicator";
 import { DealScoreBadge } from "@/components/dashboard/deal-score-badge";
 import { DispositionBadge } from "@/components/dashboard/disposition-badge";
+import { TimingBadge } from "@/components/dashboard/timing-badge";
 import { RevenueDisplay } from "@/components/dashboard/revenue-display";
 import { SourceBadges } from "@/components/dashboard/source-badges";
 import { SignalCard } from "@/components/dashboard/signal-card";
@@ -196,6 +199,13 @@ export default function OpportunityDetailPage() {
                 </span>
               )}
               <DispositionBadge window={opp.disposition_window} />
+              {opp.predicted_phase && (
+                <TimingBadge
+                  phase={opp.predicted_phase}
+                  phaseLabel={opp.predicted_phase_label}
+                  verb={opp.phase_verb}
+                />
+              )}
             </div>
           </div>
           <DealScoreBadge
@@ -230,6 +240,69 @@ export default function OpportunityDetailPage() {
             </div>
           );
         })()}
+
+        {/* Timing Prediction */}
+        {opp.predicted_phase && opp.phase_explanation && (
+          <div
+            className="flex items-start gap-3 p-4 rounded-lg"
+            style={{
+              backgroundColor: "var(--bg-surface)",
+              border: "1px solid var(--border-default)",
+            }}
+          >
+            <TimingBadge
+              phase={opp.predicted_phase}
+              phaseLabel={opp.predicted_phase_label}
+              verb={opp.phase_verb}
+            />
+            <div>
+              <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+                {opp.phase_explanation}
+              </p>
+              <p
+                className="text-[10px] mt-1"
+                style={{ color: "var(--text-muted)" }}
+              >
+                Confidence: {opp.phase_confidence}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Deal Summary — LLM-generated narrative */}
+        {opp.deal_justification && (
+          <div
+            className="p-6 rounded-lg"
+            style={{
+              backgroundColor: "var(--bg-surface)",
+              border: "1px solid var(--border-default)",
+            }}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <h2
+                className="text-base font-semibold"
+                style={{ color: "var(--text-primary)" }}
+              >
+                Deal Summary
+              </h2>
+              <span
+                className="text-[10px] font-medium px-2 py-0.5 rounded"
+                style={{
+                  backgroundColor: "var(--bg-elevated)",
+                  color: "var(--text-muted)",
+                }}
+              >
+                AI Generated
+              </span>
+            </div>
+            <p
+              className="text-sm leading-relaxed"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              {opp.deal_justification}
+            </p>
+          </div>
+        )}
 
         {/* Full Score Breakdown */}
         {opp.score_breakdown && (
@@ -286,7 +359,7 @@ export default function OpportunityDetailPage() {
               className="px-4 py-2 rounded-md text-sm font-medium"
               style={{ color: "var(--accent)", border: "1px solid var(--accent)" }}
             >
-              Watching
+              In Pipeline
             </span>
           )}
           {watchError && (
@@ -299,6 +372,17 @@ export default function OpportunityDetailPage() {
             )
           )}
         </div>
+
+        {/* Pipeline Management */}
+        {opp.watchlist_id && (
+          <PipelineControls
+            watchlistId={opp.watchlist_id}
+            status={opp.watchlist_status || "identified"}
+            priority={opp.watchlist_priority || "medium"}
+            followUpAt={opp.follow_up_at}
+            onUpdate={(updates) => setOpp((prev) => prev ? { ...prev, ...updates } : prev)}
+          />
+        )}
 
         {/* Decision-Maker Contacts */}
         <ContactsSection
@@ -411,5 +495,145 @@ export default function OpportunityDetailPage() {
         </div>
       </div>
     </PlanGate>
+  );
+}
+
+const PIPELINE_STAGES = [
+  { key: "identified", label: "Identified", color: "var(--text-muted)" },
+  { key: "researching", label: "Researching", color: "var(--accent)" },
+  { key: "contacted", label: "Contacted", color: "var(--high)" },
+  { key: "negotiating", label: "Negotiating", color: "var(--medium)" },
+  { key: "won", label: "Won", color: "#10b981" },
+  { key: "lost", label: "Lost", color: "var(--critical)" },
+];
+
+const PRIORITIES = [
+  { key: "low", label: "Low", color: "var(--text-muted)" },
+  { key: "medium", label: "Medium", color: "var(--medium)" },
+  { key: "high", label: "High", color: "var(--high)" },
+  { key: "urgent", label: "Urgent", color: "var(--critical)" },
+];
+
+function PipelineControls({
+  watchlistId,
+  status,
+  priority,
+  followUpAt,
+  onUpdate,
+}: {
+  watchlistId: string;
+  status: string;
+  priority: string;
+  followUpAt: string | null;
+  onUpdate: (updates: Partial<OpportunityDetail>) => void;
+}) {
+  const [currentStatus, setCurrentStatus] = useState(status);
+  const [currentPriority, setCurrentPriority] = useState(priority);
+  const [currentFollowUp, setCurrentFollowUp] = useState(followUpAt || "");
+
+  const handleStatusChange = async (newStatus: string) => {
+    try {
+      await api.updateLeadStatus(watchlistId, newStatus);
+      setCurrentStatus(newStatus);
+      onUpdate({ watchlist_status: newStatus });
+    } catch {}
+  };
+
+  const handlePriorityChange = async (newPriority: string) => {
+    try {
+      await api.updateLeadPriority(watchlistId, newPriority);
+      setCurrentPriority(newPriority);
+      onUpdate({ watchlist_priority: newPriority });
+    } catch {}
+  };
+
+  const handleFollowUpChange = async (value: string) => {
+    setCurrentFollowUp(value);
+    try {
+      await api.updateFollowUp(watchlistId, value || null);
+      onUpdate({ follow_up_at: value || null });
+    } catch {}
+  };
+
+  const stageConfig = PIPELINE_STAGES.find((s) => s.key === currentStatus);
+
+  return (
+    <div
+      className="p-4 rounded-lg space-y-4"
+      style={{ backgroundColor: "var(--bg-surface)", border: "1px solid var(--border-default)" }}
+    >
+      <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+        Pipeline Management
+      </h3>
+
+      <div className="grid grid-cols-3 gap-4">
+        {/* Stage */}
+        <div>
+          <label className="text-[10px] uppercase tracking-wide font-medium block mb-1" style={{ color: "var(--text-muted)" }}>
+            Stage
+          </label>
+          <select
+            value={currentStatus}
+            onChange={(e) => handleStatusChange(e.target.value)}
+            className="w-full px-2 py-1.5 rounded text-xs outline-none"
+            style={{
+              backgroundColor: "var(--bg-elevated)",
+              border: "1px solid var(--border-default)",
+              color: stageConfig?.color || "var(--text-primary)",
+            }}
+          >
+            {PIPELINE_STAGES.map((s) => (
+              <option key={s.key} value={s.key}>{s.label}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Priority */}
+        <div>
+          <label className="text-[10px] uppercase tracking-wide font-medium block mb-1" style={{ color: "var(--text-muted)" }}>
+            Priority
+          </label>
+          <select
+            value={currentPriority}
+            onChange={(e) => handlePriorityChange(e.target.value)}
+            className="w-full px-2 py-1.5 rounded text-xs outline-none"
+            style={{
+              backgroundColor: "var(--bg-elevated)",
+              border: "1px solid var(--border-default)",
+              color: PRIORITIES.find((p) => p.key === currentPriority)?.color || "var(--text-primary)",
+            }}
+          >
+            {PRIORITIES.map((p) => (
+              <option key={p.key} value={p.key}>{p.label}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Follow-up date */}
+        <div>
+          <label className="text-[10px] uppercase tracking-wide font-medium block mb-1" style={{ color: "var(--text-muted)" }}>
+            Follow-up
+            {currentFollowUp && (
+              <FollowUpIndicator followUpAt={currentFollowUp} compact />
+            )}
+          </label>
+          <input
+            type="datetime-local"
+            value={currentFollowUp ? currentFollowUp.slice(0, 16) : ""}
+            onChange={(e) => handleFollowUpChange(e.target.value ? new Date(e.target.value).toISOString() : "")}
+            className="w-full px-2 py-1.5 rounded text-xs outline-none"
+            style={{
+              backgroundColor: "var(--bg-elevated)",
+              border: "1px solid var(--border-default)",
+              color: "var(--text-primary)",
+              colorScheme: "dark",
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Activity Timeline */}
+      <ActivityTimeline watchlistId={watchlistId} />
+    </div>
   );
 }

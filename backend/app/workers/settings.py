@@ -128,6 +128,11 @@ async def send_weekly_digest(ctx):
         await db.commit()
 
 
+async def run_security_audit_job(ctx):
+    from app.workers.security_worker import run_security_audit
+    return await run_security_audit(ctx)
+
+
 class WorkerSettings:
     redis_settings = RedisSettings.from_dsn(settings.redis_url)
     functions = [
@@ -142,6 +147,7 @@ class WorkerSettings:
         refresh_all_risk_scores,
         send_daily_digest,
         send_weekly_digest,
+        run_security_audit_job,
     ]
     cron_jobs = [
         cron(collect_warn_act, hour={0, 6, 12, 18}),
@@ -154,4 +160,5 @@ class WorkerSettings:
         cron(refresh_all_risk_scores, hour=5, minute=0),  # Daily 5am UTC
         cron(send_daily_digest, hour=13, minute=0),
         cron(send_weekly_digest, weekday=1, hour=13, minute=0),
+        cron(run_security_audit_job, hour={0, 6, 12, 18}, minute=15),  # Every 6 hours
     ]

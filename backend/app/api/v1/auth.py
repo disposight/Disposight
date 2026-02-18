@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from app.api.v1.deps import CurrentUserId, DbSession
@@ -16,23 +16,23 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 class AuthCallbackRequest(BaseModel):
-    email: str
-    full_name: str | None = None
-    tenant_name: str | None = None
-    company_name: str | None = None
-    job_title: str | None = None
-    referral_source: str | None = None
-    organization_type: str | None = None
-    primary_goal: str | None = None
+    email: str = Field(max_length=320)
+    full_name: str | None = Field(default=None, max_length=200)
+    tenant_name: str | None = Field(default=None, max_length=200)
+    company_name: str | None = Field(default=None, max_length=200)
+    job_title: str | None = Field(default=None, max_length=200)
+    referral_source: str | None = Field(default=None, max_length=200)
+    organization_type: str | None = Field(default=None, max_length=200)
+    primary_goal: str | None = Field(default=None, max_length=500)
 
 
 class ProfileUpdateRequest(BaseModel):
-    company_name: str | None = None
-    job_title: str | None = None
-    referral_source: str | None = None
-    full_name: str | None = None
-    organization_type: str | None = None
-    primary_goal: str | None = None
+    company_name: str | None = Field(default=None, max_length=200)
+    job_title: str | None = Field(default=None, max_length=200)
+    referral_source: str | None = Field(default=None, max_length=200)
+    full_name: str | None = Field(default=None, max_length=200)
+    organization_type: str | None = Field(default=None, max_length=200)
+    primary_goal: str | None = Field(default=None, max_length=500)
 
 
 class AuthCallbackResponse(BaseModel):

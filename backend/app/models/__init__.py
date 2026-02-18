@@ -11,6 +11,7 @@ from app.models.signal_source import SignalSource
 from app.models.subscription import Subscription
 from app.models.contact import Contact
 from app.models.email_pattern import EmailPattern
+from app.models.pipeline_activity import PipelineActivity
 
 __all__ = [
     "Base",
@@ -26,4 +27,5 @@ __all__ = [
     "Subscription",
     "Contact",
     "EmailPattern",
+    "PipelineActivity",
 ]
