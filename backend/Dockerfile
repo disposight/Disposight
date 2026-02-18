@@ -21,7 +21,8 @@ COPY app app/
 COPY alembic.ini .
 
 # Create non-root user with a writable home directory
-RUN addgroup --system app && adduser --system --home /home/app --ingroup app app
+RUN addgroup --system app && adduser --system --home /home/app --ingroup app app \
+    && chown -R app:app /app
 ENV UV_CACHE_DIR=/home/app/.cache/uv
 USER app
 
