@@ -20,8 +20,9 @@ RUN uv run playwright install chromium
 COPY app app/
 COPY alembic.ini .
 
-# Create non-root user
-RUN addgroup --system app && adduser --system --ingroup app app
+# Create non-root user with a writable home directory
+RUN addgroup --system app && adduser --system --home /home/app --ingroup app app
+ENV UV_CACHE_DIR=/home/app/.cache/uv
 USER app
 
 EXPOSE 8000
