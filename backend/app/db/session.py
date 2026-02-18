@@ -9,6 +9,10 @@ connect_args: dict = {"statement_cache_size": 0, "prepared_statement_cache_size"
 
 if not settings.debug:
     ssl_ctx = ssl.create_default_context()
+    # Supabase pooler uses certs that may not validate against system CAs;
+    # enforce encryption but skip hostname/cert verification for the pooler.
+    ssl_ctx.check_hostname = False
+    ssl_ctx.verify_mode = ssl.CERT_NONE
     connect_args["ssl"] = ssl_ctx
 
 engine = create_async_engine(
