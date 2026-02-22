@@ -10,7 +10,10 @@ export const metadata: Metadata = {
       "Professional plan at $199/mo. WARN Act, bankruptcy, SEC, and news monitoring with real-time alerts and deal scoring. Start with a free 3-day trial.",
     url: "https://disposight.com/pricing",
   },
-  alternates: { canonical: "https://disposight.com/pricing" },
+  alternates: {
+    canonical: "https://disposight.com/pricing",
+    types: { "application/rss+xml": "https://disposight.com/feed.xml" },
+  },
 };
 
 export default function PricingLayout({ children }: { children: React.ReactNode }) {

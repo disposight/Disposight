@@ -1,0 +1,106 @@
+name: Generate Blog Post
+
+on:
+  workflow_dispatch:
+    inputs:
+      category:
+        description: "Blog category"
+        required: true
+        type: choice
+        default: "industry-analysis"
+        options:
+          - industry-analysis
+          - asset-recovery
+          - bankruptcy-guide
+          - warn-act
+          - due-diligence
+          - liquidation-strategy
+          - equipment-remarketing
+          - distressed-investing
+      count:
+        description: "Number of posts to generate"
+        required: true
+        type: choice
+        default: "1"
+        options:
+          - "1"
+          - "2"
+          - "3"
+      dry_run:
+        description: "Preview only (don't commit)"
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      DATAFORSEO_LOGIN: ${{ secrets.DATAFORSEO_LOGIN }}
+      DATAFORSEO_PASSWORD: ${{ secrets.DATAFORSEO_PASSWORD }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: dev
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: cd frontend && npm ci
+
+      - name: Run blog pipeline
+        id: pipeline
+        run: |
+          cd frontend
+          ARGS="--auto --category ${{ inputs.category }} --count ${{ inputs.count }} --verbose"
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+          echo "Running: npm run pipeline -- $ARGS"
+          npm run pipeline -- $ARGS 2>&1 | tee /tmp/pipeline-output.txt
+          echo "output<<EOF" >> "$GITHUB_OUTPUT"
+          tail -50 /tmp/pipeline-output.txt >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Commit & push
+        if: inputs.dry_run == false
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add frontend/content/ frontend/public/blog/images/
+          if git diff --cached --quiet; then
+            echo "No new content generated — nothing to commit."
+          else
+            COUNT=$(git diff --cached --name-only | wc -l | tr -d ' ')
+            git commit -m "blog: auto-generate ${{ inputs.count }} post(s) (${{ inputs.category }})" \
+              -m "Generated $COUNT file(s) via workflow_dispatch"
+            git push
+            echo "Committed and pushed $COUNT file(s)."
+          fi
+
+      - name: Workflow summary
+        run: |
+          echo "## Blog Generation Results" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Parameter | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-----------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Category | \`${{ inputs.category }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Count | ${{ inputs.count }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Dry Run | ${{ inputs.dry_run }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Pipeline Output (last 50 lines)" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "${{ steps.pipeline.outputs.output }}" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"

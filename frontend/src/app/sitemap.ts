@@ -1,15 +1,38 @@
 import type { MetadataRoute } from "next";
+import { getAllPostsIndex, getAllCategories } from "@/lib/blog/data";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = "https://disposight.com";
 
-  return [
-    { url: base, lastModified: new Date(), changeFrequency: "weekly", priority: 1.0 },
-    { url: `${base}/pricing`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
-    { url: `${base}/about`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
-    { url: `${base}/faq`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
-    { url: `${base}/contact`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.5 },
-    { url: `${base}/register`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.5 },
-    { url: `${base}/login`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
+  const staticRoutes: MetadataRoute.Sitemap = [
+    { url: base, lastModified: new Date() },
+    { url: `${base}/pricing`, lastModified: new Date() },
+    { url: `${base}/about`, lastModified: new Date() },
+    { url: `${base}/faq`, lastModified: new Date() },
+    { url: `${base}/contact`, lastModified: new Date() },
+    { url: `${base}/register`, lastModified: new Date() },
+    { url: `${base}/login`, lastModified: new Date() },
+    { url: `${base}/blog`, lastModified: new Date() },
+    { url: `${base}/feed.xml`, lastModified: new Date() },
   ];
+
+  const categories = getAllCategories().map(({ category }) => ({
+    url: `${base}/blog/category/${category}`,
+    lastModified: new Date(),
+  }));
+
+  const posts = getAllPostsIndex().map((post) => {
+    const imageUrl = post.heroImage?.url;
+    const fullImageUrl = imageUrl?.startsWith("/")
+      ? `${base}${imageUrl}`
+      : imageUrl;
+
+    return {
+      url: `${base}/blog/${post.slug}`,
+      lastModified: new Date(post.publishedAt),
+      ...(fullImageUrl ? { images: [fullImageUrl] } : {}),
+    };
+  });
+
+  return [...staticRoutes, ...categories, ...posts];
 }

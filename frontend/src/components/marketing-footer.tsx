@@ -36,6 +36,13 @@ export function MarketingFooter() {
             FAQ
           </Link>
           <Link
+            href="/blog"
+            className="text-xs transition-colors hover:opacity-80"
+            style={{ color: "var(--text-muted)" }}
+          >
+            Blog
+          </Link>
+          <Link
             href="/contact"
             className="text-xs transition-colors hover:opacity-80"
             style={{ color: "var(--text-muted)" }}

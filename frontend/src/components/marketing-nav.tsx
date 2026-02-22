@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export function MarketingNav() {
   return (
-    <nav className="flex items-center justify-between max-w-6xl mx-auto px-4 sm:px-6 py-5">
+    <nav className="flex items-center justify-between w-full px-6 sm:px-10 lg:px-16 py-5">
       <Link href="/" className="flex items-center gap-2">
         <img src="/logo.png" alt="DispoSight" className="h-8" />
         <span className="text-lg font-bold" style={{ color: "var(--accent)" }}>
@@ -30,6 +30,13 @@ export function MarketingNav() {
           style={{ color: "var(--text-secondary)" }}
         >
           FAQ
+        </Link>
+        <Link
+          href="/blog"
+          className="text-sm hidden sm:inline transition-colors hover:opacity-80"
+          style={{ color: "var(--text-secondary)" }}
+        >
+          Blog
         </Link>
         <Link
           href="/contact"

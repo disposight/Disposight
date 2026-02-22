@@ -12,7 +12,10 @@ export const metadata: Metadata = {
       "Find asset deals before the competition. Monitor layoffs, bankruptcies, closures, and M&A to discover disposition opportunities before anyone else.",
     url: "https://disposight.com",
   },
-  alternates: { canonical: "https://disposight.com" },
+  alternates: {
+    canonical: "https://disposight.com",
+    types: { "application/rss+xml": "https://disposight.com/feed.xml" },
+  },
 };
 import { ScrollReveal } from "@/components/scroll-reveal";
 import { ScrollLink } from "@/components/scroll-link";

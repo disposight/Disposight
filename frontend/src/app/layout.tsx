@@ -41,7 +41,20 @@ export const metadata: Metadata = {
   },
   alternates: {
     canonical: siteUrl,
+    types: {
+      "application/rss+xml": `${siteUrl}/feed.xml`,
+    },
   },
+};
+
+const organizationSchema = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "DispoSight",
+  url: siteUrl,
+  logo: `${siteUrl}/logo.png`,
+  description:
+    "Corporate distress intelligence platform. Monitors WARN Act filings, bankruptcy courts, SEC 8-K filings, and global news to surface asset disposition opportunities.",
 };
 
 export default function RootLayout({
@@ -51,7 +64,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
-      <body className="font-sans antialiased">{children}</body>
+      <body className="font-sans antialiased">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
+        />
+        {children}
+      </body>
     </html>
   );
 }

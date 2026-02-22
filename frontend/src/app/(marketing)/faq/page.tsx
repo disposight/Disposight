@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { ScrollReveal } from "@/components/scroll-reveal";
 
 const faqs = [
   {
@@ -74,88 +75,92 @@ export default function FaqPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <section className="max-w-3xl mx-auto px-4 sm:px-6 pt-16 sm:pt-24 pb-12 sm:pb-16 text-center">
-        <p
-          className="text-xs font-medium uppercase tracking-widest mb-4"
-          style={{ color: "var(--accent)" }}
-        >
-          FAQ
-        </p>
-        <h1
-          className="text-3xl sm:text-4xl font-bold mb-4"
-          style={{ color: "var(--text-primary)" }}
-        >
-          Frequently asked questions
-        </h1>
-        <p className="text-base" style={{ color: "var(--text-secondary)" }}>
-          Everything you need to know about DispoSight.
-        </p>
-      </section>
+      <ScrollReveal>
+        <section className="max-w-3xl mx-auto px-4 sm:px-6 pt-16 sm:pt-24 pb-12 sm:pb-16 text-center">
+          <p
+            className="text-xs font-medium uppercase tracking-widest mb-4"
+            style={{ color: "var(--accent)" }}
+          >
+            FAQ
+          </p>
+          <h1
+            className="text-3xl sm:text-4xl font-bold mb-4"
+            style={{ color: "var(--text-primary)" }}
+          >
+            Frequently asked questions
+          </h1>
+          <p className="text-base" style={{ color: "var(--text-secondary)" }}>
+            Everything you need to know about DispoSight.
+          </p>
+        </section>
+      </ScrollReveal>
 
-      <section className="max-w-3xl mx-auto px-4 sm:px-6 pb-16 sm:pb-24">
-        <div className="space-y-2">
-          {faqs.map((faq, i) => (
-            <div
-              key={i}
-              className="rounded-xl overflow-hidden"
+      <ScrollReveal stagger={80}>
+        <section className="max-w-3xl mx-auto px-4 sm:px-6 pb-16 sm:pb-24">
+          <div className="space-y-2">
+            {faqs.map((faq, i) => (
+              <div
+                key={i}
+                className="sr-item rounded-xl overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/5"
+                style={{
+                  backgroundColor: "var(--bg-surface)",
+                  border: "1px solid var(--border-default)",
+                }}
+              >
+                <button
+                  onClick={() => setOpenIndex(openIndex === i ? null : i)}
+                  className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left"
+                >
+                  <span
+                    className="text-sm font-medium"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {faq.question}
+                  </span>
+                  <span
+                    className="shrink-0 text-sm transition-transform duration-200"
+                    style={{
+                      color: "var(--text-muted)",
+                      transform: openIndex === i ? "rotate(45deg)" : "rotate(0deg)",
+                    }}
+                  >
+                    +
+                  </span>
+                </button>
+                {openIndex === i && (
+                  <div
+                    className="px-5 pb-4"
+                  >
+                    <p
+                      className="text-sm leading-relaxed"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
+                      {faq.answer}
+                    </p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-12 text-center">
+            <p className="text-sm mb-4" style={{ color: "var(--text-secondary)" }}>
+              Still have questions?
+            </p>
+            <Link
+              href="/contact"
+              className="inline-block px-6 py-2.5 rounded-md text-sm font-medium transition-all hover:brightness-110"
               style={{
                 backgroundColor: "var(--bg-surface)",
-                border: "1px solid var(--border-default)",
+                color: "var(--text-secondary)",
+                border: "1px solid var(--border-strong)",
               }}
             >
-              <button
-                onClick={() => setOpenIndex(openIndex === i ? null : i)}
-                className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left"
-              >
-                <span
-                  className="text-sm font-medium"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  {faq.question}
-                </span>
-                <span
-                  className="shrink-0 text-sm transition-transform duration-200"
-                  style={{
-                    color: "var(--text-muted)",
-                    transform: openIndex === i ? "rotate(45deg)" : "rotate(0deg)",
-                  }}
-                >
-                  +
-                </span>
-              </button>
-              {openIndex === i && (
-                <div
-                  className="px-5 pb-4"
-                >
-                  <p
-                    className="text-sm leading-relaxed"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    {faq.answer}
-                  </p>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-12 text-center">
-          <p className="text-sm mb-4" style={{ color: "var(--text-secondary)" }}>
-            Still have questions?
-          </p>
-          <Link
-            href="/contact"
-            className="inline-block px-6 py-2.5 rounded-md text-sm font-medium transition-all hover:brightness-110"
-            style={{
-              backgroundColor: "var(--bg-surface)",
-              color: "var(--text-secondary)",
-              border: "1px solid var(--border-strong)",
-            }}
-          >
-            Contact Us
-          </Link>
-        </div>
-      </section>
+              Contact Us
+            </Link>
+          </div>
+        </section>
+      </ScrollReveal>
     </>
   );
 }

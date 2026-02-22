@@ -10,7 +10,10 @@ export const metadata: Metadata = {
       "Common questions about DispoSight's data sources, AI scoring, pricing, free trial, data security, and support.",
     url: "https://disposight.com/faq",
   },
-  alternates: { canonical: "https://disposight.com/faq" },
+  alternates: {
+    canonical: "https://disposight.com/faq",
+    types: { "application/rss+xml": "https://disposight.com/feed.xml" },
+  },
 };
 
 export default function FaqLayout({ children }: { children: React.ReactNode }) {
